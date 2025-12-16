@@ -1,187 +1,190 @@
-# Comet - Shop Layout Tool for Cabinet/Wood Shops
+# Comet - Shop Layout SaaS for Cabinet/Wood Shops
 
-A web-based shop layout planning tool for cabinet and woodworking shops. Design optimal layouts for machines, storage, electrical circuits, dust collection systems, and compressed air runs.
+A modern web application for designing and managing shop layouts for cabinet and woodworking shops. Built with Next.js 14, Prisma, PostgreSQL, and TypeScript.
 
-## Project Status
+## Features
 
-✅ Database schema created with 15 tables
-✅ Seed data created for 804 N Killingsworth shop
-✅ Next.js 14 + TypeScript + Prisma initialized
+### ✅ Completed Features
 
-## Stack
+#### Data Model & Database
+- **15-table relational schema** with Postgres + Prisma ORM
+- Tables: shops, shop_buildings, equipment_types, equipment, power_specs, equipment_placements, layouts, dust_collection_points, air_line_points, electrical_circuits, wall_outlets, ceiling_drops, overhead_doors, and more
+- Full relationships and constraints
+- Seeded with real data for "804 N Killingsworth" building and 9+ pieces of equipment
 
-- **Framework**: Next.js 14 with App Router
+#### Buildings & Layouts Management
+- **Dashboard** showing all buildings in the shop
+- **Building detail pages** with dimensions and layout listings
+- **Layout canvas** with visual grid display (10px = 1 foot scale)
+- View equipment placements with dimensions and positions
+
+#### Equipment Management
+- **Equipment inventory page** with searchable table
+- Equipment details including:
+  - Name, manufacturer, model
+  - Dimensions (length × width × height in inches)
+  - Power specs (voltage, amperage, phase)
+  - Equipment type categorization
+- **Add new equipment form** with validation
+- Edit and manage existing equipment
+
+#### Interactive Layout Canvas
+- **Drag-and-drop equipment placement**
+  - Drag equipment blocks to reposition
+  - Visual feedback with selection highlighting
+  - Precise positioning on grid
+- **Rotation tool** - Rotate selected equipment 90°
+- **Real-time visual updates**
+- Equipment displayed as scaled blocks with labels
+
+#### Export Tools
+- **Export to PNG** - Canvas screenshot download
+- **Export to CSV** - Equipment list with positions
+- **Export to JSON** - Complete layout data structure
+- One-click download for all formats
+
+#### Routing Tools
+- **Dust Collection routing** - Orange lines for dust collection paths
+- **Air Line routing** - Blue lines for compressed air
+- **Electrical routing** - Red lines for electrical circuits
+- Interactive point-by-point route drawing
+- Route management (add/delete)
+- Visual SVG-based rendering
+
+### Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
-- **Database**: PostgreSQL
-- **ORM**: Prisma
+- **Database**: PostgreSQL with Prisma ORM
 - **Styling**: Tailwind CSS
+- **Deployment**: Vercel-ready
 
-## Database Schema
+## Getting Started
 
-The database includes 15 tables:
+### Prerequisites
 
-1. **shop_buildings** - Physical shop locations
-2. **shop_zones** - Zones within buildings (warehouse, office, yard)
-3. **utility_points** - Electrical panels, transformers, dust collectors, compressors
-4. **equipment** - Machines and tools
-5. **equipment_power_specs** - Power requirements
-6. **equipment_dust_specs** - Dust collection specs
-7. **equipment_air_specs** - Compressed air specs
-8. **layout_instances** - Different layout scenarios
-9. **equipment_layout_positions** - Equipment placement in layouts
-10. **dust_runs** - Dust collection duct runs
-11. **air_runs** - Compressed air piping
-12. **electrical_circuits** - Circuit definitions
-13. **equipment_circuits** - Equipment-to-circuit mappings
+- Node.js 18+
+- PostgreSQL database
+- npm or yarn
 
-## Initial Seed Data
+### Installation
 
-The seed includes:
+1. Clone the repository:
+```bash
+git clone https://github.com/scott-a11y/comet.git
+cd comet
+```
 
-- **Building**: 804 N Killingsworth Ct (100' × 43' warehouse)
-- **Zones**: Warehouse, Office Area, Storage Yard
-- **Utility Points**: 
-  - Main 480V Panel
-  - Auto Transformer (40 kVA)
-  - AL-KO APU 250 P Dust Collector
-- **Equipment** (9 machines):
-  - OMGA T 50/350 O.P. US (industrial miter saw)
-  - Festool KAPEX KS 120 REB (sliding miter saw)
-  - Grizzly G0621X Bandsaw
-  - Central Machinery 39955 Drill Press
-  - Maksiwa PHM.30 Planer
-  - DeWalt DW735 Thickness Planer
-  - Azzuno MF-200PRO Welder
-  - BARTH Hydraulic Lift Table
-  - Horizontal Panel Storage Rack
-
-## Setup Instructions
-
-### 1. Install Dependencies
-
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-### 2. Set Up Database
-
-You need a PostgreSQL database. Options:
-
-**Option A: Use a cloud database (recommended for Codespaces)**
-- Create a free database at [Neon](https://neon.tech) or [Supabase](https://supabase.com)
-- Copy the connection string
-
-**Option B: Local PostgreSQL**
+3. Set up environment variables:
 ```bash
-# Install PostgreSQL locally or use Docker
-docker run --name comet-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres
+cp .env.example .env
+# Edit .env and add your DATABASE_URL
 ```
 
-### 3. Configure Environment
-
-Update `.env` with your database URL:
-
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/comet?schema=public"
-```
-
-### 4. Run Migrations
-
+4. Run database migrations:
 ```bash
-npx prisma migrate dev --name init
+npx prisma migrate dev
 ```
 
-This creates all 15 tables in your database.
-
-### 5. Generate Prisma Client
-
-```bash
-npx prisma generate
-```
-
-### 6. Seed the Database
-
-First, add the seed script to `package.json`:
-
-```json
-"prisma": {
-  "seed": "tsx prisma/seed.ts"
-}
-```
-
-Install tsx:
-```bash
-npm install -D tsx
-```
-
-Run the seed:
+5. Seed the database:
 ```bash
 npx prisma db seed
 ```
 
-### 7. Start Development Server
-
+6. Start the development server:
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+7. Open [http://localhost:3000](http://localhost:3000)
 
-## Development Commands
+## Database Schema
 
-```bash
-# Run development server
-npm run dev
+Key tables and relationships:
 
-# Generate Prisma client after schema changes
-npx prisma generate
+- **shops** → **shop_buildings** (1:many)
+- **shop_buildings** → **layouts** (1:many)
+- **layouts** → **equipment_placements** (1:many)
+- **equipment** → **equipment_placements** (1:many)
+- **equipment** → **power_specs** (1:many)
+- **layouts** → **dust_collection_points**, **air_line_points**, **electrical_circuits** (1:many each)
 
-# Create a new migration
-npx prisma migrate dev --name migration_name
+## API Routes
 
-# Reset database (WARNING: deletes all data)
-npx prisma migrate reset
-
-# Open Prisma Studio (database GUI)
-npx prisma studio
-
-# Run seed script
-npx prisma db seed
-```
-
-## Next Steps
-
-1. **Implement Authentication** - Add NextAuth.js or Supabase Auth
-2. **Build Buildings Dashboard** - List and create shop buildings
-3. **Create Layout Canvas** - 2D draggable canvas for equipment placement
-4. **Add Routing Tools** - Draw dust runs, air lines, and electrical circuits
-5. **Export Features** - Generate PDFs, PNGs, and CSV/JSON exports
+- `GET /api/buildings` - List all buildings
+- `GET /api/buildings/[id]` - Get building details
+- `GET /api/layouts/[id]` - Get layout with equipment placements
+- `POST /api/equipment` - Add new equipment
+- `GET /api/equipment` - List all equipment
 
 ## Project Structure
 
 ```
 comet/
-├── app/                  # Next.js App Router pages
+├── app/
+│   ├── page.tsx                    # Dashboard
+│   ├── buildings/
+│   │   ├── page.tsx                # Buildings list
+│   │   └── [id]/
+│   │       ├── page.tsx            # Building detail
+│   │       └── layouts/[layoutId]/
+│   │           ├── page.tsx        # Layout canvas
+│   │           ├── interactive-canvas.tsx
+│   │           └── routing-tools.tsx
+│   └── equipment/
+│       ├── page.tsx                # Equipment list
+│       └── new/
+│           └── page.tsx            # Add equipment form
 ├── prisma/
-│   ├── schema.prisma    # Database schema (15 tables)
-│   └── seed.ts          # Seed script with 804 N Killingsworth data
-├── .env                 # Database connection string
-├── package.json
-└── README.md
+│   ├── schema.prisma               # Database schema
+│   └── seed.ts                     # Seed data
+├── lib/
+│   ├── prisma.ts                   # Prisma client
+│   └── export.ts                   # Export utilities
+└── public/
 ```
 
-## Database Relationships
+## Development Roadmap
 
-- Buildings → Zones (1:many)
-- Buildings → Equipment (1:many)
-- Buildings → Utility Points (1:many)
-- Buildings → Layouts (1:many)
-- Equipment → Power/Dust/Air Specs (1:1)
-- Layouts → Equipment Positions (1:many)
-- Layouts → Dust Runs (1:many)
-- Layouts → Air Runs (1:many)
-- Layouts → Electrical Circuits (1:many)
+### Future Enhancements
+- [ ] Multi-tenant authentication (Clerk or Auth.js)
+- [ ] Real-time collaboration
+- [ ] 3D visualization
+- [ ] PDF export with detailed annotations
+- [ ] Cost estimation tools
+- [ ] Mobile-responsive design improvements
+- [ ] Workflow/cut list generation
+- [ ] Integration with CAD tools
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Push to GitHub
+2. Import project in Vercel
+3. Add environment variables:
+   - `DATABASE_URL` (PostgreSQL connection string)
+4. Deploy!
+
+### Environment Variables
+
+```env
+DATABASE_URL="postgresql://user:password@host:5432/dbname"
+```
 
 ## License
 
 MIT
+
+## Contributing
+
+Contributions welcome! Please open an issue or PR.
+
+---
+
+Built with ❤️ for cabinet makers and woodworkers
