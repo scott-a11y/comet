@@ -1,67 +1,98 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
+import prisma from '@/lib/prisma'
+import { createEquipmentSchema } from '@/lib/validations/equipment'
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const buildingId = searchParams.get('buildingId')
-    
-    const where = buildingId ? { shopBuildingId: parseInt(buildingId) } : {}
-    
     const equipment = await prisma.equipment.findMany({
-      where,
       include: {
+        equipmentType: true,
         powerSpecs: true,
-        dustSpecs: true,
-        airSpecs: true,
-        preferredZone: true
       },
-      orderBy: {
-        name: 'asc'
-      }
+      orderBy: { name: 'asc' },
     })
     
     return NextResponse.json(equipment)
   } catch (error) {
-    console.error('Error fetching equipment:', error)
-    return NextResponse.json({ error: 'Failed to fetch equipment' }, { status: 500 })
+    console.error('Equipment fetch error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch equipment' },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { powerSpecs, dustSpecs, airSpecs, ...equipmentData } = body
     
+    // Validate input with Zod
+    const validated = createEquipmentSchema.parse(body)
+    
+    // Check if equipment type exists
+    const equipmentType = await prisma.equipmentType.findUnique({
+      where: { id: validated.equipmentTypeId }
+    })
+    
+    if (!equipmentType) {
+      return NextResponse.json(
+        { error: 'Equipment type not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Create equipment
     const equipment = await prisma.equipment.create({
       data: {
-        ...equipmentData,
-        ...(powerSpecs && {
-          powerSpecs: {
-            create: powerSpecs
-          }
-        }),
-        ...(dustSpecs && {
-          dustSpecs: {
-            create: dustSpecs
-          }
-        }),
-        ...(airSpecs && {
-          airSpecs: {
-            create: airSpecs
-          }
-        })
+        name: validated.name,
+        manufacturer: validated.manufacturer,
+        model: validated.model,
+        equipmentTypeId: validated.equipmentTypeId,
+        lengthIn: validated.lengthIn,
+        widthIn: validated.widthIn,
+        heightIn: validated.heightIn,
+        weightLbs: validated.weightLbs,
       },
       include: {
-        powerSpecs: true,
-        dustSpecs: true,
-        airSpecs: true
-      }
+        equipmentType: true,
+      },
     })
     
     return NextResponse.json(equipment, { status: 201 })
   } catch (error) {
-    console.error('Error creating equipment:', error)
-    return NextResponse.json({ error: 'Failed to create equipment' }, { status: 500 })
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid input', 
+          details: error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        },
+        { status: 400 }
+      )
+    }
+    
+    // Handle Prisma errors
+    if (error instanceof Error) {
+      console.error('Equipment creation error:', error.message)
+      
+      // Handle unique constraint violations
+      if (error.message.includes('Unique constraint')) {
+        return NextResponse.json(
+          { error: 'Equipment with this name already exists' },
+          { status: 409 }
+        )
+      }
+    }
+    
+    // Generic error
+    console.error('Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Failed to create equipment' },
+      { status: 500 }
+    )
   }
 }
