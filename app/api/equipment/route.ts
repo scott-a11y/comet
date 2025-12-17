@@ -7,8 +7,9 @@ export async function GET() {
   try {
     const equipment = await prisma.equipment.findMany({
       include: {
-        equipmentType: true,
         powerSpecs: true,
+        dustSpecs: true,
+        airSpecs: true,
       },
       orderBy: { name: 'asc' },
     })
@@ -30,14 +31,14 @@ export async function POST(request: Request) {
     // Validate input with Zod
     const validated = createEquipmentSchema.parse(body)
     
-    // Check if equipment type exists
-    const equipmentType = await prisma.equipmentType.findUnique({
-      where: { id: validated.equipmentTypeId }
+    // Check if shop building exists
+    const building = await prisma.shopBuilding.findUnique({
+      where: { id: validated.shopBuildingId }
     })
     
-    if (!equipmentType) {
+    if (!building) {
       return NextResponse.json(
-        { error: 'Equipment type not found' },
+        { error: 'Shop building not found' },
         { status: 404 }
       )
     }
@@ -45,17 +46,20 @@ export async function POST(request: Request) {
     // Create equipment
     const equipment = await prisma.equipment.create({
       data: {
+        shopBuildingId: validated.shopBuildingId,
         name: validated.name,
-        manufacturer: validated.manufacturer,
-        model: validated.model,
-        equipmentTypeId: validated.equipmentTypeId,
-        lengthIn: validated.lengthIn,
-        widthIn: validated.widthIn,
-        heightIn: validated.heightIn,
-        weightLbs: validated.weightLbs,
+        category: validated.category,
+        widthFt: validated.widthFt,
+        depthFt: validated.depthFt,
+        orientation: validated.orientation,
+        requiresDust: validated.requiresDust,
+        requiresAir: validated.requiresAir,
+        requiresHighVoltage: validated.requiresHighVoltage,
       },
       include: {
-        equipmentType: true,
+        powerSpecs: true,
+        dustSpecs: true,
+        airSpecs: true,
       },
     })
     
