@@ -98,7 +98,7 @@ model EquipmentPowerSpecs {
 
 model EquipmentDustSpecs {
   id              Int       @id @default(autoincrement())
-  equipmentId     Int       @map("equipment_id")
+  equipmentId     Int       @unique       @map("equipment_id")
   numPorts        Int       @default(1) @map("num_ports")
   portDiameterIn  Float     @map("port_diameter_in")
   cfmRequirement  Float?    @map("cfm_requirement")
