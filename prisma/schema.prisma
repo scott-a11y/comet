@@ -108,8 +108,8 @@ model EquipmentDustSpecs {
 
 model EquipmentAirSpecs {
   id            Int       @id @default(autoincrement())
-  equipmentId   Int       @map("equipment_id")
-  pressureBar   Float     @map("pressure_bar")
+  equipmentId    Int       @unique @map("equipment_id")  
+pressureBar   Float     @map("pressure_bar")
   flowScfm      Float?    @map("flow_scfm")
   equipment     Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
   @@map("equipment_air_specs")
