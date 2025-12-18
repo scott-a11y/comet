@@ -2,9 +2,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 
-async function getBuilding(id: string) {
+async function getBuilding(buildingId: string) {
   const building = await prisma.shopBuilding.findUnique({
-    where: { id: parseInt(id) },
+    where: { buildingId: parseInt(buildingId) },
     include: {
       zones: true,
       equipment: {
@@ -40,7 +40,7 @@ interface PageProps {
 
 export default async function BuildingDetailPage({ params }: PageProps) {
   const { id } = await params
-  const building = await getBuilding(id)
+  const building = await getBuilding(buildingId)
   
   if (!building) {
     notFound()
