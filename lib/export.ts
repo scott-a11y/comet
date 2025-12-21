@@ -1,3 +1,19 @@
+interface EquipmentPlacement {
+  equipment: {
+    name: string
+    widthIn?: number
+    lengthIn?: number
+  }
+  xPos: number
+  yPos: number
+  rotation: number
+}
+
+interface Layout {
+  id: number | string
+  equipmentPlacements: EquipmentPlacement[]
+}
+
 export async function exportLayoutToPNG(layoutId: string) {
   // Canvas to PNG conversion
   const canvas = document.getElementById('layout-canvas') as HTMLCanvasElement
@@ -9,10 +25,10 @@ export async function exportLayoutToPNG(layoutId: string) {
   link.click()
 }
 
-export async function exportLayoutToCSV(layout: any) {
-  const rows = [
+export async function exportLayoutToCSV(layout: Layout) {
+  const rows: (string | number | undefined)[][] = [
     ['Equipment', 'X', 'Y', 'Width', 'Height', 'Rotation'],
-    ...layout.equipmentPlacements.map((p: any) => [
+    ...layout.equipmentPlacements.map((p) => [
       p.equipment.name,
       p.xPos,
       p.yPos,
@@ -32,7 +48,7 @@ export async function exportLayoutToCSV(layout: any) {
   URL.revokeObjectURL(url)
 }
 
-export async function exportLayoutToJSON(layout: any) {
+export async function exportLayoutToJSON(layout: Layout) {
   const json = JSON.stringify(layout, null, 2)
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)

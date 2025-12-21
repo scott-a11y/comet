@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 
 export default async function EquipmentPage() {
   const equipment = await prisma.equipment.findMany({
     include: {
-      equipmentType: true,
-      powerSpecs: true
+      powerSpecs: true,
+      dustSpecs: true,
+      airSpecs: true,
     },
     orderBy: { name: 'asc' }
   })
@@ -31,7 +32,7 @@ export default async function EquipmentPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensions</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Power</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -42,18 +43,17 @@ export default async function EquipmentPage() {
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    <div className="text-sm text-gray-500">{item.manufacturer || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {item.equipmentType.name}
+                      {item.category}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.lengthIn}" × {item.widthIn}" × {item.heightIn}"
+                    {item.widthFt}&apos; × {item.depthFt}&apos;
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.powerSpecs[0]?.voltage || 'N/A'}V / {item.powerSpecs[0]?.amperage || 'N/A'}A
+                    {item.powerSpecs ? `${item.powerSpecs.voltage}V / ${item.powerSpecs.amps}A` : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <Link href={`/equipment/${item.id}`} className="text-blue-600 hover:text-blue-900 mr-4">
