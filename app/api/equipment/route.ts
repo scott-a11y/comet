@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma
-  import { createEquipmentSchema } from '@/lib/validations/equipment'
+import { prisma } from '@/lib/prisma'
+import { createEquipmentSchema } from '@/lib/validations/equipment'
 
 export async function GET() {
   try {
