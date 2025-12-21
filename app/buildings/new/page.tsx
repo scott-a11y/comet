@@ -8,6 +8,7 @@ export default function NewBuildingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -55,6 +56,17 @@ export default function NewBuildingPage() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type === 'application/pdf') {
+        setPdfFile(file);
+      } else {
+        setError('Please select a PDF file');
+      }
+    }
   };
 
   return (
@@ -112,6 +124,25 @@ export default function NewBuildingPage() {
                 className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="e.g., 123 Workshop St, Portland, OR"
               />
+            </div>
+
+            <div>
+              <label htmlFor="pdf" className="block text-sm font-medium text-slate-300 mb-2">
+                Upload PDF (Optional)
+              </label>
+              <input
+                type="file"
+                id="pdf"
+                name="pdf"
+                accept=".pdf,application/pdf"
+                onChange={handleFileChange}
+                className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+              />
+              {pdfFile && (
+                <p className="mt-2 text-sm text-slate-400">
+                  Selected: {pdfFile.name} ({(pdfFile.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-4">
