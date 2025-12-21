@@ -4,7 +4,9 @@ import { prisma } from '@/lib/prisma'
 export default async function EquipmentPage() {
   const equipment = await prisma.equipment.findMany({
     include: {
-      powerSpecs: true
+      powerSpecs: true,
+      dustSpecs: true,
+      airSpecs: true,
     },
     orderBy: { name: 'asc' }
   })
@@ -48,10 +50,10 @@ export default async function EquipmentPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.widthFt}ft × {item.depthFt}ft
+                    {item.widthFt}&apos; × {item.depthFt}&apos;
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.powerSpecs?.voltage || 'N/A'}V / {item.powerSpecs?.amps || 'N/A'}A
+                    {item.powerSpecs ? `${item.powerSpecs.voltage}V / ${item.powerSpecs.amps}A` : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <Link href={`/equipment/${item.id}`} className="text-blue-600 hover:text-blue-900 mr-4">

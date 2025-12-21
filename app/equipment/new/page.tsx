@@ -1,22 +1,37 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
+interface Building {
+  id: number
+  name: string
+}
+
 export default function NewEquipmentPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [buildings, setBuildings] = useState<Building[]>([])
   const [formData, setFormData] = useState({
+    shopBuildingId: '',
     name: '',
-    manufacturer: '',
-    model: '',
-    equipmentTypeId: '1', // Default to first type
-    lengthIn: 0,
-    widthIn: 0,
-    heightIn: 0,
-    weightLbs: 0
+    category: '',
+    widthFt: 0,
+    depthFt: 0,
+    orientation: 0,
+    requiresDust: false,
+    requiresAir: false,
+    requiresHighVoltage: false,
   })
+
+  useEffect(() => {
+    // Fetch buildings for the dropdown
+    fetch('/api/buildings')
+      .then(res => res.json())
+      .then(data => setBuildings(data))
+      .catch(err => console.error('Failed to fetch buildings:', err))
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,10 +43,10 @@ export default function NewEquipmentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          lengthIn: Number(formData.lengthIn),
-          widthIn: Number(formData.widthIn),
-          heightIn: Number(formData.heightIn),
-          weightLbs: Number(formData.weightLbs) || null
+          shopBuildingId: Number(formData.shopBuildingId),
+          widthFt: Number(formData.widthFt),
+          depthFt: Number(formData.depthFt),
+          orientation: Number(formData.orientation),
         })
       })
 
@@ -44,7 +59,7 @@ export default function NewEquipmentPage() {
       } else {
         toast.error(data.error || 'Failed to create equipment')
         if (data.details) {
-          data.details.forEach((detail: any) => {
+          data.details.forEach((detail: { field: string; message: string }) => {
             toast.error(`${detail.field}: ${detail.message}`)
           })
         }
@@ -66,6 +81,25 @@ export default function NewEquipmentPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Shop Building *
+              </label>
+              <select
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.shopBuildingId}
+                onChange={(e) => setFormData({...formData, shopBuildingId: e.target.value})}
+              >
+                <option value="">Select a building</option>
+                {buildings.map((building) => (
+                  <option key={building.id} value={building.id}>
+                    {building.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Equipment Name *
               </label>
               <input
@@ -76,62 +110,99 @@ export default function NewEquipmentPage() {
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Manufacturer
-              </label>
-              <input
-                type="text"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.manufacturer}
-                onChange={(e) => setFormData({...formData, manufacturer: e.target.value})}
-              />
-            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Category *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g., CNC Router, Table Saw, Dust Collector"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={formData.category}
+              onChange={(e) => setFormData({...formData, category: e.target.value})}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Length (inches) *
+                Width (feet) *
               </label>
               <input
                 type="number"
                 required
-                min="1"
+                min="0.1"
                 step="0.1"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.lengthIn}
-                onChange={(e) => setFormData({...formData, lengthIn: Number(e.target.value)})}
+                value={formData.widthFt}
+                onChange={(e) => setFormData({...formData, widthFt: Number(e.target.value)})}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Width (inches) *
+                Depth (feet) *
               </label>
               <input
                 type="number"
                 required
-                min="1"
+                min="0.1"
                 step="0.1"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.widthIn}
-                onChange={(e) => setFormData({...formData, widthIn: Number(e.target.value)})}
+                value={formData.depthFt}
+                onChange={(e) => setFormData({...formData, depthFt: Number(e.target.value)})}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Height (inches) *
+                Orientation (°)
               </label>
               <input
                 type="number"
-                required
-                min="1"
-                step="0.1"
+                min="0"
+                max="360"
+                step="1"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.heightIn}
-                onChange={(e) => setFormData({...formData, heightIn: Number(e.target.value)})}
+                value={formData.orientation}
+                onChange={(e) => setFormData({...formData, orientation: Number(e.target.value)})}
               />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
+              Requirements
+            </label>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  checked={formData.requiresDust}
+                  onChange={(e) => setFormData({...formData, requiresDust: e.target.checked})}
+                />
+                <span className="text-sm text-gray-700">Requires Dust Collection</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  checked={formData.requiresAir}
+                  onChange={(e) => setFormData({...formData, requiresAir: e.target.checked})}
+                />
+                <span className="text-sm text-gray-700">Requires Compressed Air</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  checked={formData.requiresHighVoltage}
+                  onChange={(e) => setFormData({...formData, requiresHighVoltage: e.target.checked})}
+                />
+                <span className="text-sm text-gray-700">Requires High Voltage</span>
+              </label>
             </div>
           </div>
 
