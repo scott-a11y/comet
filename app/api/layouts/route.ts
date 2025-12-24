@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { createLayoutSchema } from '@/lib/validations/layouts'
 
 export async function GET(request: Request) {
   try {
@@ -40,14 +42,53 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    
-    const layout = await prisma.layoutInstance.create({
-      data: body
+
+    // Validate input with Zod
+    const validated = createLayoutSchema.parse(body)
+
+    // Check if shop building exists
+    const building = await prisma.shopBuilding.findUnique({
+      where: { id: validated.shopBuildingId }
     })
-    
+
+    if (!building) {
+      return NextResponse.json(
+        { error: 'Shop building not found' },
+        { status: 404 }
+      )
+    }
+
+    // Create layout
+    const layout = await prisma.layoutInstance.create({
+      data: validated
+    })
+
     return NextResponse.json(layout, { status: 201 })
   } catch (error) {
-    console.error('Error creating layout:', error)
-    return NextResponse.json({ error: 'Failed to create layout' }, { status: 500 })
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: 'Invalid input',
+          details: error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        },
+        { status: 400 }
+      )
+    }
+
+    // Handle Prisma errors
+    if (error instanceof Error) {
+      console.error('Layout creation error:', error.message)
+    }
+
+    // Generic error
+    console.error('Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Failed to create layout' },
+      { status: 500 }
+    )
   }
 }

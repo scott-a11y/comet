@@ -8,7 +8,8 @@ async function getBuildings() {
         select: {
           equipment: true,
           layouts: true,
-          zones: true
+          zones: true,
+          designerLayouts: true
         }
       }
     },

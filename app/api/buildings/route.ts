@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { createBuildingSchema } from '@/lib/validations/buildings'
+import { withRateLimit } from '@/lib/api-middleware'
 
-export async function GET() {
+async function getBuildingsHandler() {
   try {
     const buildings = await prisma.shopBuilding.findMany({
       include: {
@@ -31,16 +34,43 @@ export async function GET() {
   }
 }
 
+export const GET = withRateLimit(getBuildingsHandler)
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+
+    // Validate input with Zod
+    const validated = createBuildingSchema.parse(body)
+
+    // Create building
     const building = await prisma.shopBuilding.create({
-      data: body
+      data: validated
     })
-    
+
     return NextResponse.json(building, { status: 201 })
   } catch (error) {
-    console.error('Error creating building:', error)
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: 'Invalid input',
+          details: error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        },
+        { status: 400 }
+      )
+    }
+
+    // Handle Prisma errors
+    if (error instanceof Error) {
+      console.error('Building creation error:', error.message)
+    }
+
+    // Generic error
+    console.error('Unexpected error:', error)
     return NextResponse.json(
       { error: 'Failed to create building' },
       { status: 500 }

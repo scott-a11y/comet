@@ -1,8 +1,28 @@
 import Link from 'next/link'
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+      <div className="absolute top-4 right-4">
+        <SignedIn>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: 'w-10 h-10',
+              },
+            }}
+          />
+        </SignedIn>
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors">
+              Sign In
+            </button>
+          </SignInButton>
+        </SignedOut>
+      </div>
+
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-6xl font-bold text-white mb-6">
@@ -14,21 +34,36 @@ export default function Home() {
           <p className="text-lg text-slate-400 mb-12">
             Design optimal layouts for machines, electrical, dust collection, and compressed air systems
           </p>
-          
-          <div className="flex gap-4 justify-center">
-            <Link
-              href="/buildings"
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-lg"
-            >
-              View Buildings
-            </Link>
-            <Link
-              href="/buildings/new"
-              className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors text-lg"
-            >
-              New Building
-            </Link>
-          </div>
+
+          <SignedIn>
+            <div className="flex gap-4 justify-center">
+              <Link
+                href="/buildings"
+                className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-lg"
+              >
+                View Buildings
+              </Link>
+              <Link
+                href="/equipment"
+                className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors text-lg"
+              >
+                Manage Equipment
+              </Link>
+            </div>
+          </SignedIn>
+
+          <SignedOut>
+            <div className="mb-8">
+              <SignInButton mode="modal">
+                <button className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-lg">
+                  Get Started
+                </button>
+              </SignInButton>
+            </div>
+            <p className="text-slate-400 mb-8">
+              Sign in to start designing your shop layouts
+            </p>
+          </SignedOut>
 
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
             <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">

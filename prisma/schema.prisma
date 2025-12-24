@@ -16,187 +16,255 @@ model ShopBuilding {
   ceilingHeightFt Float?           @map("ceiling_height_ft")
   hasMezzanine    Boolean          @default(false) @map("has_mezzanine")
   notes           String?          @db.Text
+  pdfUrl          String?          @map("pdf_url")
+  extractedData   Json?            @map("extracted_data")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   zones           ShopZone[]
   utilityPoints   UtilityPoint[]
   equipment       Equipment[]
   layouts         LayoutInstance[]
+  designerLayouts Layout[]
+
+  @@index([name])
+  @@index([createdAt])
   @@map("shop_buildings")
 }
 
 model ShopZone {
-  id              Int          @id @default(autoincrement())
-  shopBuildingId  Int          @map("shop_building_id")
-  name            String
-  x               Float
-  y               Float
-  width           Float
-  height          Float
-  zoneType        String       @map("zone_type")
-  shopBuilding    ShopBuilding @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
-  equipment       Equipment[]
+  id             Int          @id @default(autoincrement())
+  shopBuildingId Int          @map("shop_building_id")
+  name           String
+  x              Float
+  y              Float
+  width          Float
+  height         Float
+  zoneType       String       @map("zone_type")
+  shopBuilding   ShopBuilding @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
+  equipment      Equipment[]
+
   @@map("shop_zones")
 }
 
 model UtilityPoint {
-  id              Int          @id @default(autoincrement())
-  shopBuildingId  Int          @map("shop_building_id")
-  type            String
-  name            String
-  x               Float
-  y               Float
-  voltage         Float?
-  phase           Int?
-  amps            Float?
-  kva             Float?
-  isMainService   Boolean      @default(false) @map("is_main_service")
-  isOutdoor       Boolean      @default(false) @map("is_outdoor")
-  shopBuilding    ShopBuilding @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
-  dustRunsFrom    DustRun[]    @relation("DustRunFromUtility")
-  dustRunsTo      DustRun[]    @relation("DustRunToUtility")
-  airRunsFrom     AirRun[]     @relation("AirRunFromUtility")
-  circuits        ElectricalCircuit[] @relation("CircuitPanel")
+  id             Int                 @id @default(autoincrement())
+  shopBuildingId Int                 @map("shop_building_id")
+  type           String
+  name           String
+  x              Float
+  y              Float
+  voltage        Float?
+  phase          Int?
+  amps           Float?
+  kva            Float?
+  isMainService  Boolean             @default(false) @map("is_main_service")
+  isOutdoor      Boolean             @default(false) @map("is_outdoor")
+  shopBuilding   ShopBuilding        @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
+  dustRunsFrom   DustRun[]           @relation("DustRunFromUtility")
+  dustRunsTo     DustRun[]           @relation("DustRunToUtility")
+  airRunsFrom    AirRun[]            @relation("AirRunFromUtility")
+  circuits       ElectricalCircuit[] @relation("CircuitPanel")
+
+  @@index([type])
   @@map("utility_points")
 }
 
 model Equipment {
-  id                Int                        @id @default(autoincrement())
-  shopBuildingId    Int                        @map("shop_building_id")
-  name              String
-  category          String
-  widthFt           Float                      @map("width_ft")
-  depthFt           Float                      @map("depth_ft")
-  orientation       Float                      @default(0)
-  requiresDust      Boolean                    @default(false) @map("requires_dust")
-  requiresAir       Boolean                    @default(false) @map("requires_air")
-  requiresHighVoltage Boolean                  @default(false) @map("requires_high_voltage")
-  preferredZoneId   Int?                       @map("preferred_zone_id")
-  shopBuilding      ShopBuilding               @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
-  preferredZone     ShopZone?                  @relation(fields: [preferredZoneId], references: [id])
-  powerSpecs        EquipmentPowerSpecs?
-  dustSpecs         EquipmentDustSpecs?
-  airSpecs          EquipmentAirSpecs?
-  layoutPositions   EquipmentLayoutPosition[]
-  dustRunsFrom      DustRun[]                  @relation("DustRunFromEquipment")
-  dustRunsTo        DustRun[]                  @relation("DustRunToEquipment")
-  airRuns           AirRun[]
-  circuits          EquipmentCircuit[]
+  id                  Int                       @id @default(autoincrement())
+  shopBuildingId      Int                       @map("shop_building_id")
+  name                String
+  category            String
+  widthFt             Float                     @map("width_ft")
+  depthFt             Float                     @map("depth_ft")
+  orientation         Float                     @default(0)
+  requiresDust        Boolean                   @default(false) @map("requires_dust")
+  requiresAir         Boolean                   @default(false) @map("requires_air")
+  requiresHighVoltage Boolean                   @default(false) @map("requires_high_voltage")
+  preferredZoneId     Int?                      @map("preferred_zone_id")
+  shopBuilding        ShopBuilding              @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
+  preferredZone       ShopZone?                 @relation(fields: [preferredZoneId], references: [id])
+  powerSpecs          EquipmentPowerSpecs?
+  dustSpecs           EquipmentDustSpecs?
+  airSpecs            EquipmentAirSpecs?
+  layoutPositions     EquipmentLayoutPosition[]
+  dustRunsFrom        DustRun[]                 @relation("DustRunFromEquipment")
+  dustRunsTo          DustRun[]                 @relation("DustRunToEquipment")
+  airRuns             AirRun[]
+  circuits            EquipmentCircuit[]
+
+  @@index([name])
+  @@index([category])
   @@map("equipment")
 }
 
 model EquipmentPowerSpecs {
-  equipmentId   Int       @id @map("equipment_id")
-  voltage       Float
-  phase         Int
-  amps          Float
-  powerKw       Float?    @map("power_kw")
-  circuitType   String    @default("standard") @map("circuit_type")
-  equipment     Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  equipmentId Int       @id @map("equipment_id")
+  voltage     Float
+  phase       Int
+  amps        Float
+  powerKw     Float?    @map("power_kw")
+  circuitType String    @default("standard") @map("circuit_type")
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
   @@map("equipment_power_specs")
 }
 
 model EquipmentDustSpecs {
-  id              Int       @id @default(autoincrement())
-  equipmentId     Int       @unique       @map("equipment_id")
-  numPorts        Int       @default(1) @map("num_ports")
-  portDiameterIn  Float     @map("port_diameter_in")
-  cfmRequirement  Float?    @map("cfm_requirement")
-  equipment       Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  id             Int       @id @default(autoincrement())
+  equipmentId    Int       @unique @map("equipment_id")
+  numPorts       Int       @default(1) @map("num_ports")
+  portDiameterIn Float     @map("port_diameter_in")
+  cfmRequirement Float?    @map("cfm_requirement")
+  equipment      Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
   @@map("equipment_dust_specs")
 }
 
 model EquipmentAirSpecs {
-  id            Int       @id @default(autoincrement())
-  equipmentId   Int       @unique @map("equipment_id")
-  pressureBar   Float     @map("pressure_bar")
-  flowScfm      Float?    @map("flow_scfm")
-  equipment     Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  id          Int       @id @default(autoincrement())
+  equipmentId Int       @unique @map("equipment_id")
+  pressureBar Float     @map("pressure_bar")
+  flowScfm    Float?    @map("flow_scfm")
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
   @@map("equipment_air_specs")
 }
 
 model LayoutInstance {
-  id              Int                        @id @default(autoincrement())
-  shopBuildingId  Int                        @map("shop_building_id")
-  name            String
-  createdAt       DateTime                   @default(now()) @map("created_at")
-  updatedAt       DateTime                   @updatedAt @map("updated_at")
-  shopBuilding    ShopBuilding               @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
+  id                 Int                       @id @default(autoincrement())
+  shopBuildingId     Int                       @map("shop_building_id")
+  name               String
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
+  shopBuilding       ShopBuilding              @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
   equipmentPositions EquipmentLayoutPosition[]
-  dustRuns        DustRun[]
-  airRuns         AirRun[]
-  circuits        ElectricalCircuit[]
+  dustRuns           DustRun[]
+  airRuns            AirRun[]
+  circuits           ElectricalCircuit[]
+
+  @@index([createdAt])
   @@map("layout_instances")
 }
 
 model EquipmentLayoutPosition {
-  id            Int              @id @default(autoincrement())
-  layoutId      Int              @map("layout_id")
-  equipmentId   Int              @map("equipment_id")
-  x             Float
-  y             Float
-  orientation   Float            @default(0)
-  locked        Boolean          @default(false)
-  layout        LayoutInstance   @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  equipment     Equipment        @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  id          Int            @id @default(autoincrement())
+  layoutId    Int            @map("layout_id")
+  equipmentId Int            @map("equipment_id")
+  x           Float
+  y           Float
+  orientation Float          @default(0)
+  locked      Boolean        @default(false)
+  layout      LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  equipment   Equipment      @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
   @@unique([layoutId, equipmentId])
   @@map("equipment_layout_positions")
 }
 
 model DustRun {
-  id                  Int              @id @default(autoincrement())
-  layoutId            Int              @map("layout_id")
-  fromEquipmentId     Int?             @map("from_equipment_id")
-  toEquipmentId       Int?             @map("to_equipment_id")
-  fromUtilityId       Int?             @map("from_utility_id")
-  toUtilityId         Int?             @map("to_utility_id")
-  diameterIn          Float            @map("diameter_in")
-  lengthFt            Float            @map("length_ft")
-  staticPressureLoss  Float?           @map("static_pressure_loss_in_wg")
-  layout              LayoutInstance   @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  fromEquipment       Equipment?       @relation("DustRunFromEquipment", fields: [fromEquipmentId], references: [id])
-  toEquipment         Equipment?       @relation("DustRunToEquipment", fields: [toEquipmentId], references: [id])
-  fromUtility         UtilityPoint?    @relation("DustRunFromUtility", fields: [fromUtilityId], references: [id])
-  toUtility           UtilityPoint?    @relation("DustRunToUtility", fields: [toUtilityId], references: [id])
+  id                 Int            @id @default(autoincrement())
+  layoutId           Int            @map("layout_id")
+  fromEquipmentId    Int?           @map("from_equipment_id")
+  toEquipmentId      Int?           @map("to_equipment_id")
+  fromUtilityId      Int?           @map("from_utility_id")
+  toUtilityId        Int?           @map("to_utility_id")
+  diameterIn         Float          @map("diameter_in")
+  lengthFt           Float          @map("length_ft")
+  staticPressureLoss Float?         @map("static_pressure_loss_in_wg")
+  layout             LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  fromEquipment      Equipment?     @relation("DustRunFromEquipment", fields: [fromEquipmentId], references: [id])
+  toEquipment        Equipment?     @relation("DustRunToEquipment", fields: [toEquipmentId], references: [id])
+  fromUtility        UtilityPoint?  @relation("DustRunFromUtility", fields: [fromUtilityId], references: [id])
+  toUtility          UtilityPoint?  @relation("DustRunToUtility", fields: [toUtilityId], references: [id])
+
   @@map("dust_runs")
 }
 
 model AirRun {
-  id              Int              @id @default(autoincrement())
-  layoutId        Int              @map("layout_id")
-  fromUtilityId   Int              @map("from_utility_id")
-  toEquipmentId   Int?             @map("to_equipment_id")
-  pipeDiameterIn  Float            @map("pipe_diameter_in")
-  lengthFt        Float            @map("length_ft")
-  layout          LayoutInstance   @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  fromUtility     UtilityPoint     @relation("AirRunFromUtility", fields: [fromUtilityId], references: [id])
-  toEquipment     Equipment?       @relation(fields: [toEquipmentId], references: [id])
+  id             Int            @id @default(autoincrement())
+  layoutId       Int            @map("layout_id")
+  fromUtilityId  Int            @map("from_utility_id")
+  toEquipmentId  Int?           @map("to_equipment_id")
+  pipeDiameterIn Float          @map("pipe_diameter_in")
+  lengthFt       Float          @map("length_ft")
+  layout         LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  fromUtility    UtilityPoint   @relation("AirRunFromUtility", fields: [fromUtilityId], references: [id])
+  toEquipment    Equipment?     @relation(fields: [toEquipmentId], references: [id])
+
   @@map("air_runs")
 }
 
 model ElectricalCircuit {
-  id              Int                   @id @default(autoincrement())
-  layoutId        Int                   @map("layout_id")
-  panelUtilityId  Int                   @map("panel_utility_id")
-  circuitNumber   String                @map("circuit_number")
-  voltage         Float
-  phase           Int
-  breakerAmps     Float                 @map("breaker_amps")
-  wireGauge       String?               @map("wire_gauge")
-  notes           String?               @db.Text
-  layout          LayoutInstance        @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  panel           UtilityPoint          @relation("CircuitPanel", fields: [panelUtilityId], references: [id])
+  id                Int                @id @default(autoincrement())
+  layoutId          Int                @map("layout_id")
+  panelUtilityId    Int                @map("panel_utility_id")
+  circuitNumber     String             @map("circuit_number")
+  voltage           Float
+  phase             Int
+  breakerAmps       Float              @map("breaker_amps")
+  wireGauge         String?            @map("wire_gauge")
+  notes             String?            @db.Text
+  layout            LayoutInstance     @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  panel             UtilityPoint       @relation("CircuitPanel", fields: [panelUtilityId], references: [id])
   equipmentCircuits EquipmentCircuit[]
+
   @@map("electrical_circuits")
 }
 
 model EquipmentCircuit {
-  id          Int                 @id @default(autoincrement())
-  circuitId   Int                 @map("circuit_id")
-  equipmentId Int                 @map("equipment_id")
-  distanceFt  Float?              @map("distance_ft")
-  circuit     ElectricalCircuit   @relation(fields: [circuitId], references: [id], onDelete: Cascade)
-  equipment   Equipment           @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  id          Int               @id @default(autoincrement())
+  circuitId   Int               @map("circuit_id")
+  equipmentId Int               @map("equipment_id")
+  distanceFt  Float?            @map("distance_ft")
+  circuit     ElectricalCircuit @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+  equipment   Equipment         @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
   @@unique([circuitId, equipmentId])
   @@map("equipment_circuits")
+}
+
+// Layout models for shop designer
+model Layout {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+
+  // The building this layout belongs to
+  buildingId  Int
+  building    ShopBuilding @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  // JSON storage for the canvas state (positions, rotation, etc.)
+  // We use JSONB for flexibility in the drag-and-drop UI
+  canvasState Json?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation to equipment instances used in this layout
+  equipmentInstances EquipmentInstance[]
+}
+
+// Specific instances of equipment placed on a layout
+model EquipmentInstance {
+  id        String   @id @default(cuid())
+  layoutId  String
+  layout    Layout   @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+
+  // Reference to a catalog item (future feature)
+  // catalogItemId String?
+
+  name      String   // e.g., "Table Saw 1"
+  type      String   // e.g., "SAW", "DUST_COLLECTOR"
+
+  // Physical properties override
+  width     Float
+  length    Float
+
+  // Position data (Cached here for querying, detailed visual data in canvasState)
+  x         Float    @default(0)
+  y         Float    @default(0)
+  rotation  Float    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
