@@ -7,9 +7,11 @@ const analyzeSchema = z.object({
   pdfUrl: z.string().url(),
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAIClient() {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +24,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const openai = getOpenAIClient();
 
     // Use OpenAI Vision to analyze the PDF
     const response = await openai.chat.completions.create({
