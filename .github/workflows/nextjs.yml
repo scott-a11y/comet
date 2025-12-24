@@ -5,6 +5,9 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+  env:
+  DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+
 permissions:
   contents: read
   pages: write
