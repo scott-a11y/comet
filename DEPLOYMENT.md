@@ -15,19 +15,36 @@
 6. Copy the **Connection String** (starts with `postgresql://`)
 7. Replace `[YOUR-PASSWORD]` with your actual password
 
-### 2. Deploy to Vercel (3 minutes)
+### 2. Set Up Clerk Authentication (2 minutes)
+
+1. Go to [clerk.com](https://clerk.com) and create an account
+2. Create a new application
+3. Go to **API Keys** section (or use this link: https://dashboard.clerk.com/last-active?path=api-keys)
+4. Copy both keys:
+   - **Publishable Key** (starts with `pk_test_...` or `pk_live_...`)
+   - **Secret Key** (starts with `sk_test_...` or `sk_live_...`)
+
+⚠️ **IMPORTANT**: Don't mix up these keys! The publishable key is public-safe, the secret key must be kept private.
+
+### 3. Deploy to Vercel (3 minutes)
 
 1. Go to [vercel.com](https://vercel.com)
 2. Click **Import Project**
 3. Import from GitHub: `scott-a11y/comet`
 4. In **Environment Variables**, add:
-   ```
-   DATABASE_URL=your_supabase_connection_string_here
-   ```
+
+   | Variable | Value | Notes |
+   |----------|-------|-------|
+   | `DATABASE_URL` | `postgresql://...` | Your Supabase connection string |
+   | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_test_...` | From Clerk dashboard (must start with `pk_`) |
+   | `CLERK_SECRET_KEY` | `sk_test_...` | From Clerk dashboard (must start with `sk_`) |
+   | `BLOB_READ_WRITE_TOKEN` | `vercel_blob_...` | Optional: For PDF uploads |
+   | `OPENAI_API_KEY` | `sk-...` | Optional: For PDF analysis |
+
 5. Click **Deploy**
 6. Wait ~2 minutes for build
 
-### 3. Run Database Migrations (1 minute)
+### 4. Run Database Migrations (1 minute)
 
 Option A: Use Vercel CLI locally
 ```bash
@@ -44,7 +61,7 @@ DATABASE_URL="your_supabase_url" npx prisma migrate deploy
 DATABASE_URL="your_supabase_url" npx prisma db seed
 ```
 
-### 4. Done!
+### 5. Done!
 
 Your app is live at: `https://comet-[random].vercel.app`
 
@@ -120,6 +137,26 @@ npx prisma migrate reset
 
 ## Troubleshooting
 
+### Clerk Authentication Errors
+
+**"NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must start with pk_"**
+- You've set a secret key (`sk_...`) where a publishable key should be
+- Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+- Set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` to your **publishable** key (starts with `pk_`)
+- Redeploy the application
+
+**"CLERK_SECRET_KEY must start with sk_"**
+- You've set a publishable key (`pk_...`) where a secret key should be
+- Set `CLERK_SECRET_KEY` to your **secret** key (starts with `sk_`)
+- Redeploy the application
+
+**Authentication not working after deploy**
+1. Verify both Clerk variables are set in Vercel:
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` = `pk_test_...` or `pk_live_...`
+   - `CLERK_SECRET_KEY` = `sk_test_...` or `sk_live_...`
+2. Make sure you're using keys from the same Clerk application
+3. Redeploy after making changes
+
 ### "Can't reach database server"
 - Check DATABASE_URL is correct
 - Verify database is running
@@ -145,4 +182,3 @@ npx prisma generate
 - [ ] Test all pages load
 - [ ] Verify building detail page works
 - [ ] Check API endpoints respond
-
