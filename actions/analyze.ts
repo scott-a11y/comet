@@ -6,7 +6,7 @@ import OpenAI from "openai";
 
 const startAnalysisSchema = z.object({
   pdfUrl: z.string().url(),
-  buildingId: z.number(),
+  buildingId: z.number().optional(),
 });
 
 const checkStatusSchema = z.object({
