@@ -2,9 +2,11 @@
 
 import { z } from "zod";
 import { createServerAction } from "zsa";
+import OpenAI from "openai";
 
 const startAnalysisSchema = z.object({
   pdfUrl: z.string().url(),
+  buildingId: z.number(),
 });
 
 const checkStatusSchema = z.object({
@@ -15,26 +17,48 @@ export const startPdfAnalysis = createServerAction()
   .input(startAnalysisSchema)
   .handler(async ({ input }) => {
     try {
-      // Call the analyze-pdf API route directly instead of using Trigger.dev
-      const response = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL || 'http://localhost:3000'}/api/analyze-pdf`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pdfUrl: input.pdfUrl }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to start analysis');
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error("OpenAI API key not configured");
       }
 
-      const result = await response.json();
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      // Analyze the PDF using OpenAI Vision
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Analyze this floor plan image. Extract width, length (in feet) and provide a summary. Return JSON only with keys: width, length, height (optional), summary."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: input.pdfUrl }
+              }
+            ]
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1000,
+        temperature: 0.1
+      });
+
+      const content = response.choices[0].message.content;
+      if (!content) {
+        throw new Error("No analysis returned from OpenAI");
+      }
+
+      const data = JSON.parse(content);
 
       return {
         success: true,
-        jobId: result.jobId || 'direct-analysis',
-        data: result.data,
+        jobId: `analysis-${Date.now()}`,
+        data,
       };
     } catch (error) {
       throw new Error(`Failed to start PDF analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
