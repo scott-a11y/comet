@@ -2,11 +2,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 
-async function getLayout(buildingId: string, layoutId: string) {
+async function getLayout(id: string, layoutId: string) {
   const layout = await prisma.layoutInstance.findUnique({
     where: { 
       id: parseInt(layoutId),
-      shopBuildingId: parseInt(buildingId)
+      shopBuildingId: parseInt(id)
     },
     include: {
       shopBuilding: true,
@@ -28,12 +28,12 @@ async function getLayout(buildingId: string, layoutId: string) {
 }
 
 interface PageProps {
-  params: Promise<{ buildingId: string; layoutId: string }>
+  params: Promise<{ id: string; layoutId: string }>
 }
 
 export default async function LayoutCanvasPage({ params }: PageProps) {
-  const { buildingId, layoutId } = await params
-  const layout = await getLayout(buildingId, layoutId)
+  const { id, layoutId } = await params
+  const layout = await getLayout(id, layoutId)
   
   if (!layout) {
     notFound()
@@ -44,7 +44,7 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link
-            href={`/buildings/${buildingId}`}
+            href={`/buildings/${id}`}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
           >
             ← Back

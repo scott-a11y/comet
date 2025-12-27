@@ -1,0 +1,471 @@
++---------------------------------------
++------- Fetching IP Addresses
+|
+| comet-three-pi.vercel.app IP range: 216.198.79.3, 216.198.79.67, 216.198.79.131, 216.198.79.195, 64.29.17.3, 64.29.17.67, 64.29.17.131, 64.29.17.195
++---------------------------------------
+
++---------------------------------------
++------- STARTING
+|
+| Domain to test: comet-three-pi.vercel.app 
+| Timestamp (UTC): 12/27/2025 16:29:21
+| Timestamp (Local): 12/27/2025 08:29:21
++---------------------------------------
+
++---------------------------------------
++------- IP Information 
+
+{
+  "ip": "97.120.104.145",
+  "hostname": "97-120-104-145.ptld.qwest.net",
+  "city": "Portland",
+  "region": "Oregon",
+  "country": "US",
+  "loc": "45.5234,-122.6762",
+  "org": "AS209 CenturyLink Communications, LLC",
+  "postal": "97204",
+  "timezone": "America/Los_Angeles",
+  "readme": "https://ipinfo.io/missingauth"
+}
+
++---------------------------------------
+
++---------------------------------------
++------- Testing 216.198.79.3 
+Checking headers via 216.198.79.3
+* Connecting to hostname: 216.198.79.3
+*   Trying 216.198.79.3:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to 216.198.79.3 (216.198.79.3 port 443) from 192.168.1.24 port 52976 
+* using HTTP/1.x
+> GET / HTTP/1.1
+
+> Host: comet-three-pi.vercel.app
+
+> User-Agent: curl/8.16.0
+
+> Accept: */*
+
+> 
+
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* Operation timed out after 3011 milliseconds with 0 bytes received
+* closing connection #0
+
+Checking ping to 216.198.79.3
+
+Pinging 216.198.79.3 with 32 bytes of data:
+Reply from 216.198.79.3: bytes=32 time=15ms TTL=248
+Reply from 216.198.79.3: bytes=32 time=15ms TTL=248
+Reply from 216.198.79.3: bytes=32 time=7ms TTL=248
+Reply from 216.198.79.3: bytes=32 time=7ms TTL=248
+
+Ping statistics for 216.198.79.3:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 7ms, Maximum = 15ms, Average = 11ms
++---------------------------------------
+
++---------------------------------------
++------- Testing 216.198.79.67 
+Checking headers via 216.198.79.67
+* Connecting to hostname: 216.198.79.67
+*   Trying 216.198.79.67:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to 216.198.79.67 (216.198.79.67 port 443) from 192.168.1.24 port 64181 
+* using HTTP/1.x
+> GET / HTTP/1.1
+
+> Host: comet-three-pi.vercel.app
+
+> User-Agent: curl/8.16.0
+
+> Accept: */*
+
+> 
+
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* Operation timed out after 3011 milliseconds with 0 bytes received
+* closing connection #0
+
+Checking ping to 216.198.79.67
+
+Pinging 216.198.79.67 with 32 bytes of data:
+Reply from 216.198.79.67: bytes=32 time=9ms TTL=248
+Reply from 216.198.79.67: bytes=32 time=8ms TTL=248
+Reply from 216.198.79.67: bytes=32 time=8ms TTL=248
+Reply from 216.198.79.67: bytes=32 time=7ms TTL=248
+
+Ping statistics for 216.198.79.67:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 7ms, Maximum = 9ms, Average = 8ms
++---------------------------------------
+
++---------------------------------------
++------- Testing 216.198.79.131 
+Checking headers via 216.198.79.131
+* Connecting to hostname: 216.198.79.131
+*   Trying 216.198.79.131:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to 216.198.79.131 (216.198.79.131 port 443) from 192.168.1.24 port 57321 
+* using HTTP/1.x
+> GET / HTTP/1.1
+
+> Host: comet-three-pi.vercel.app
+
+> User-Agent: curl/8.16.0
+
+> Accept: */*
+
+> 
+
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* Operation timed out after 3003 milliseconds with 0 bytes received
+* closing connection #0
+
+Checking ping to 216.198.79.131
+
+Pinging 216.198.79.131 with 32 bytes of data:
+Reply from 216.198.79.131: bytes=32 time=14ms TTL=248
+Reply from 216.198.79.131: bytes=32 time=7ms TTL=248
+Reply from 216.198.79.131: bytes=32 time=10ms TTL=248
+Reply from 216.198.79.131: bytes=32 time=9ms TTL=248
+
+Ping statistics for 216.198.79.131:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 7ms, Maximum = 14ms, Average = 10ms
++---------------------------------------
+
++---------------------------------------
++------- Testing 216.198.79.195 
+Checking headers via 216.198.79.195
+* Connecting to hostname: 216.198.79.195
+*   Trying 216.198.79.195:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to 216.198.79.195 (216.198.79.195 port 443) from 192.168.1.24 port 57323 
+* using HTTP/1.x
+> GET / HTTP/1.1
+
+> Host: comet-three-pi.vercel.app
+
+> User-Agent: curl/8.16.0
+
+> Accept: */*
+
+> 
+
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* Operation timed out after 3003 milliseconds with 0 bytes received
+* closing connection #0
+
+Checking ping to 216.198.79.195
+
+Pinging 216.198.79.195 with 32 bytes of data:
+Reply from 216.198.79.195: bytes=32 time=20ms TTL=248
+Reply from 216.198.79.195: bytes=32 time=8ms TTL=248
+Reply from 216.198.79.195: bytes=32 time=7ms TTL=248
+Reply from 216.198.79.195: bytes=32 time=7ms TTL=248
+
+Ping statistics for 216.198.79.195:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 7ms, Maximum = 20ms, Average = 10ms
++---------------------------------------
+
++---------------------------------------
++------- Testing 64.29.17.3 
+Checking headers via 64.29.17.3
+* Connecting to hostname: 64.29.17.3
+*   Trying 64.29.17.3:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to 64.29.17.3 (64.29.17.3 port 443) from 192.168.1.24 port 56036 
+* using HTTP/1.x
+> GET / HTTP/1.1
+
+> Host: comet-three-pi.vercel.app
+
+> User-Agent: curl/8.16.0
+
+> Accept: */*
+
+> 
+
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* Operation timed out after 3009 milliseconds with 0 bytes received
+* closing connection #0
+
+Checking ping to 64.29.17.3
+
+Pinging 64.29.17.3 with 32 bytes of data:
+Reply from 64.29.17.3: bytes=32 time=10ms TTL=249
+Reply from 64.29.17.3: bytes=32 time=9ms TTL=249
+Reply from 64.29.17.3: bytes=32 time=7ms TTL=249
+Reply from 64.29.17.3: bytes=32 time=7ms TTL=249
+
+Ping statistics for 64.29.17.3:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 7ms, Maximum = 10ms, Average = 8ms
++---------------------------------------
+
++---------------------------------------
++------- Testing 64.29.17.67 
+Checking headers via 64.29.17.67
+* Connecting to hostname: 64.29.17.67
+*   Trying 64.29.17.67:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to 64.29.17.67 (64.29.17.67 port 443) from 192.168.1.24 port 56037 
+* using HTTP/1.x
+> GET / HTTP/1.1
+
+> Host: comet-three-pi.vercel.app
+
+> User-Agent: curl/8.16.0
+
+> Accept: */*
+
+> 
+
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* Operation timed out after 3006 milliseconds with 0 bytes received
+* closing connection #0
+
+Checking ping to 64.29.17.67
+
+Pinging 64.29.17.67 with 32 bytes of data:
+Reply from 64.29.17.67: bytes=32 time=8ms TTL=249
+Reply from 64.29.17.67: bytes=32 time=8ms TTL=249
+Reply from 64.29.17.67: bytes=32 time=7ms TTL=249
+Reply from 64.29.17.67: bytes=32 time=11ms TTL=249
+
+Ping statistics for 64.29.17.67:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 7ms, Maximum = 11ms, Average = 8ms
++---------------------------------------
+
++---------------------------------------
++------- Testing 64.29.17.131 
+Checking headers via 64.29.17.131
+* Connecting to hostname: 64.29.17.131
+*   Trying 64.29.17.131:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to 64.29.17.131 (64.29.17.131 port 443) from 192.168.1.24 port 56039 
+* using HTTP/1.x
+> GET / HTTP/1.1
+
+> Host: comet-three-pi.vercel.app
+
+> User-Agent: curl/8.16.0
+
+> Accept: */*
+
+> 
+
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* Operation timed out after 3008 milliseconds with 0 bytes received
+* closing connection #0
+
+Checking ping to 64.29.17.131
+
+Pinging 64.29.17.131 with 32 bytes of data:
+Reply from 64.29.17.131: bytes=32 time=9ms TTL=249
+Reply from 64.29.17.131: bytes=32 time=12ms TTL=249
+Reply from 64.29.17.131: bytes=32 time=17ms TTL=249
+Reply from 64.29.17.131: bytes=32 time=7ms TTL=249
+
+Ping statistics for 64.29.17.131:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 7ms, Maximum = 17ms, Average = 11ms
++---------------------------------------
+
++---------------------------------------
++------- Testing 64.29.17.195 
+Checking headers via 64.29.17.195
+* Connecting to hostname: 64.29.17.195
+*   Trying 64.29.17.195:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to 64.29.17.195 (64.29.17.195 port 443) from 192.168.1.24 port 54341 
+* using HTTP/1.x
+> GET / HTTP/1.1
+
+> Host: comet-three-pi.vercel.app
+
+> User-Agent: curl/8.16.0
+
+> Accept: */*
+
+> 
+
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* Operation timed out after 3008 milliseconds with 0 bytes received
+* closing connection #0
+
+Checking ping to 64.29.17.195
+
+Pinging 64.29.17.195 with 32 bytes of data:
+Reply from 64.29.17.195: bytes=32 time=7ms TTL=249
+Reply from 64.29.17.195: bytes=32 time=7ms TTL=249
+Reply from 64.29.17.195: bytes=32 time=8ms TTL=249
+Reply from 64.29.17.195: bytes=32 time=6ms TTL=249
+
+Ping statistics for 64.29.17.195:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),
+Approximate round trip times in milli-seconds:
+    Minimum = 6ms, Maximum = 8ms, Average = 7ms
++---------------------------------------
+
++---------------------------------------
++------- nslookup debug comet-three-pi.vercel.app 
+
+------------
+Got answer:
+    HEADER:
+	opcode = QUERY, id = 1, rcode = NXDOMAIN
+	header flags:  response, auth. answer, want recursion, recursion avail.
+	questions = 1,  answers = 0,  authority records = 0,  additional = 0
+
+    QUESTIONS:
+	1.1.168.192.in-addr.arpa, type = PTR, class = IN
+
+------------
+Server:  UnKnown
+Address:  192.168.1.1
+
+------------
+Got answer:
+    HEADER:
+	opcode = QUERY, id = 2, rcode = NOERROR
+	header flags:  response, want recursion, recursion avail.
+	questions = 1,  answers = 2,  authority records = 0,  additional = 0
+
+    QUESTIONS:
+	comet-three-pi.vercel.app, type = A, class = IN
+    ANSWERS:
+    ->  comet-three-pi.vercel.app
+	internet address = 64.29.17.3
+	ttl = 30 (30 secs)
+    ->  comet-three-pi.vercel.app
+	internet address = 216.198.79.3
+	ttl = 30 (30 secs)
+
+------------
+------------
+Got answer:
+    HEADER:
+	opcode = QUERY, id = 3, rcode = NOERROR
+	header flags:  response, want recursion, recursion avail.
+	questions = 1,  answers = 0,  authority records = 1,  additional = 0
+
+    QUESTIONS:
+	comet-three-pi.vercel.app, type = AAAA, class = IN
+    AUTHORITY RECORDS:
+    ->  vercel.app
+	ttl = 900 (15 mins)
+	primary name server = ns1.vercel-dns-3.com
+	responsible mail addr = awsdns-hostmaster.amazon.com
+	serial  = 1
+	refresh = 7200 (2 hours)
+	retry   = 900 (15 mins)
+	expire  = 1209600 (14 days)
+	default TTL = 86400 (1 day)
+
+------------
+Name:    comet-three-pi.vercel.app
+Addresses:  64.29.17.3
+	  216.198.79.3
+
++---------------------------------------
+
++---------------------------------------
++------- nslookup comet-three-pi.vercel.app via 8.8.8.8
+
+Server:  dns.google
+Address:  8.8.8.8
+
+Name:    comet-three-pi.vercel.app
+Addresses:  216.198.79.67
+	  64.29.17.67
+
++---------------------------------------
+
++---------------------------------------
++------- Output of comet-three-pi.vercel.app
+
+* Host comet-three-pi.vercel.app:443 was resolved.
+* IPv6: (none)
+* IPv4: 64.29.17.3, 216.198.79.3
+*   Trying 64.29.17.3:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to comet-three-pi.vercel.app (64.29.17.3 port 443) from 192.168.1.24 port 54344 
+* using HTTP/1.x
+> GET / HTTP/1.1
+> Host: comet-three-pi.vercel.app
+> User-Agent: curl/8.16.0
+> Accept: */*
+> 
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* Request completely sent off
+* schannel: server closed abruptly (missing close_notify)
+* closing connection #0
+
++---------------------------------------
+
+
++---------------------------------------
+| Time elapsed: 389.9 seconds
+|
++------- FINISHED
++---------------------------------------
+
+
+
+File can be found at C:\Dev\comet\vercel-debug.txt
+
