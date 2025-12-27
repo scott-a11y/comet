@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
         return {
           allowedContentTypes: ['application/pdf'],
           maximumSizeInBytes: 10 * 1024 * 1024, // 10MB
+          addRandomSuffix: true, // Generate unique filenames to avoid conflicts
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
