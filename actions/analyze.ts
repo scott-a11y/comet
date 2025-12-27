@@ -30,7 +30,8 @@ export const startPdfAnalysis = createServerAction()
       });
 
       console.log('[PDF Analysis] Calling OpenAI Vision API...');
-      // Analyze the PDF using OpenAI Vision
+      // Note: OpenAI Vision API requires image formats (PNG, JPG, etc.)
+      // PDFs need to be converted to images first
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -43,7 +44,10 @@ export const startPdfAnalysis = createServerAction()
             content: [
               {
                 type: "image_url",
-                image_url: { url: input.pdfUrl }
+                image_url: { 
+                  url: input.pdfUrl,
+                  detail: "high"
+                }
               }
             ]
           }
