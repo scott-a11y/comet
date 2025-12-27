@@ -3,6 +3,10 @@
 import { z } from "zod";
 import { createServerAction } from "zsa";
 import OpenAI from "openai";
+import { fromPath } from "pdf2pic";
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
 
 const startAnalysisSchema = z.object({
   pdfUrl: z.string().url(),
@@ -12,6 +16,46 @@ const startAnalysisSchema = z.object({
 const checkStatusSchema = z.object({
   jobId: z.string(),
 });
+
+async function convertPdfToImage(pdfUrl: string): Promise<string> {
+  console.log('[PDF Conversion] Starting conversion for:', pdfUrl);
+  
+  // Download PDF to temp file
+  const response = await fetch(pdfUrl);
+  const buffer = await response.arrayBuffer();
+  const tempDir = os.tmpdir();
+  const tempPdfPath = path.join(tempDir, `pdf-${Date.now()}.pdf`);
+  
+  await fs.writeFile(tempPdfPath, Buffer.from(buffer));
+  console.log('[PDF Conversion] PDF downloaded to:', tempPdfPath);
+  
+  try {
+    // Convert first page to image
+    const options = {
+      density: 300, // DPI for quality
+      saveFilename: `page-${Date.now()}`,
+      savePath: tempDir,
+      format: "png",
+      width: 2000,
+      height: 2000,
+    };
+    
+    const convert = fromPath(tempPdfPath, options);
+    const result = await convert(1, { responseType: "base64" });
+    
+    console.log('[PDF Conversion] Conversion complete');
+    
+    // Clean up temp PDF
+    await fs.unlink(tempPdfPath).catch(() => {});
+    
+    // Return base64 data URL
+    return `data:image/png;base64,${result.base64}`;
+  } catch (error) {
+    // Clean up on error
+    await fs.unlink(tempPdfPath).catch(() => {});
+    throw error;
+  }
+}
 
 export const startPdfAnalysis = createServerAction()
   .input(startAnalysisSchema)
@@ -29,9 +73,16 @@ export const startPdfAnalysis = createServerAction()
         apiKey: process.env.OPENAI_API_KEY,
       });
 
+      // Convert PDF to image if needed
+      let imageUrl = input.pdfUrl;
+      const isPdf = input.pdfUrl.toLowerCase().includes('.pdf');
+      
+      if (isPdf) {
+        console.log('[PDF Analysis] Converting PDF to image...');
+        imageUrl = await convertPdfToImage(input.pdfUrl);
+      }
+
       console.log('[PDF Analysis] Calling OpenAI Vision API...');
-      // Note: OpenAI Vision API requires image formats (PNG, JPG, etc.)
-      // PDFs need to be converted to images first
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -45,7 +96,7 @@ export const startPdfAnalysis = createServerAction()
               {
                 type: "image_url",
                 image_url: { 
-                  url: input.pdfUrl,
+                  url: imageUrl,
                   detail: "high"
                 }
               }
