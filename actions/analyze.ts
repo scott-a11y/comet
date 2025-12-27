@@ -16,15 +16,20 @@ const checkStatusSchema = z.object({
 export const startPdfAnalysis = createServerAction()
   .input(startAnalysisSchema)
   .handler(async ({ input }) => {
+    console.log('[PDF Analysis] Starting analysis for:', input.pdfUrl);
+    
     try {
       if (!process.env.OPENAI_API_KEY) {
+        console.error('[PDF Analysis] OpenAI API key not configured');
         throw new Error("OpenAI API key not configured");
       }
 
+      console.log('[PDF Analysis] Creating OpenAI client...');
       const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
       });
 
+      console.log('[PDF Analysis] Calling OpenAI Vision API...');
       // Analyze the PDF using OpenAI Vision
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -48,12 +53,15 @@ export const startPdfAnalysis = createServerAction()
         temperature: 0.1
       });
 
+      console.log('[PDF Analysis] OpenAI response received');
       const content = response.choices[0].message.content;
       if (!content) {
+        console.error('[PDF Analysis] No content in OpenAI response');
         throw new Error("No analysis returned from OpenAI");
       }
 
       const data = JSON.parse(content);
+      console.log('[PDF Analysis] Successfully parsed data:', data);
 
       return {
         success: true,
@@ -61,7 +69,9 @@ export const startPdfAnalysis = createServerAction()
         data,
       };
     } catch (error) {
-      throw new Error(`Failed to start PDF analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('[PDF Analysis] Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`PDF analysis failed: ${errorMessage}`);
     }
   });
 
