@@ -2,8 +2,6 @@
 
 import { z } from "zod";
 import { createServerAction } from "zsa";
-import { tasks } from "@trigger.dev/sdk/v3";
-import { analyzePdfTask } from "@/src/trigger/analyze-pdf";
 
 const startAnalysisSchema = z.object({
   pdfUrl: z.string().url(),
@@ -17,17 +15,29 @@ export const startPdfAnalysis = createServerAction()
   .input(startAnalysisSchema)
   .handler(async ({ input }) => {
     try {
-      const handle = await tasks.trigger<typeof analyzePdfTask>(
-        "analyze-pdf",
-        { pdfUrl: input.pdfUrl }
-      );
+      // Call the analyze-pdf API route directly instead of using Trigger.dev
+      const response = await fetch(`${process.env.NEXT_PUBLIC_VERCEL_URL || 'http://localhost:3000'}/api/analyze-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pdfUrl: input.pdfUrl }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to start analysis');
+      }
+
+      const result = await response.json();
 
       return {
         success: true,
-        jobId: handle.id,
+        jobId: result.jobId || 'direct-analysis',
+        data: result.data,
       };
     } catch (error) {
-      throw new Error("Failed to start PDF analysis");
+      throw new Error(`Failed to start PDF analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   });
 
