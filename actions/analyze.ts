@@ -48,8 +48,15 @@ async function convertPdfToImage(pdfUrl: string): Promise<string> {
     // Clean up temp PDF
     await fs.unlink(tempPdfPath).catch(() => {});
     
-    // Return base64 data URL
-    return `data:image/png;base64,${result.base64}`;
+    // Ensure we have valid base64 data
+    const base64Data = result.base64 || result;
+    if (!base64Data || typeof base64Data !== 'string') {
+      throw new Error('Failed to extract base64 data from PDF conversion');
+    }
+    
+    // Return base64 data URL (remove any existing data: prefix if present)
+    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    return `data:image/png;base64,${cleanBase64}`;
   } catch (error) {
     // Clean up on error
     await fs.unlink(tempPdfPath).catch(() => {});
