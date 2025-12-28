@@ -4,6 +4,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/',
+  '/buildings(.*)',  // TEMP DIAGNOSTIC
 ])
 
 const isProtectedRoute = createRouteMatcher([  '/buildings(.*)',
