@@ -2,6 +2,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 
+// Force dynamic rendering for Vercel
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const dynamicParams = true;
+
 async function getLayout(id: string, layoutId: string) {
   const layout = await prisma.layoutInstance.findUnique({
     where: { 
@@ -77,10 +82,10 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
                   key={pos.id}
                   className="absolute bg-blue-600/30 border-2 border-blue-500 rounded p-2 cursor-move hover:bg-blue-600/50 transition-colors"
                   style={{
-                    left: `${(pos.x / layout.shopBuilding.widthFt) * 100}%`,
-                    top: `${(pos.y / layout.shopBuilding.depthFt) * 100}%`,
-                    width: `${(pos.equipment.widthFt / layout.shopBuilding.widthFt) * 100}%`,
-                    height: `${(pos.equipment.depthFt / layout.shopBuilding.depthFt) * 100}%`,
+                    left: `${(pos.x / (layout.shopBuilding.widthFt || 1)) * 100}%`,
+                    top: `${(pos.y / (layout.shopBuilding.depthFt || 1)) * 100}%`,
+                    width: `${(pos.equipment.widthFt / (layout.shopBuilding.widthFt || 1)) * 100}%`,
+                    height: `${(pos.equipment.depthFt / (layout.shopBuilding.depthFt || 1)) * 100}%`,
                     transform: `rotate(${pos.orientation}deg)`
                   }}
                 >
