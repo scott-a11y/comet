@@ -117,12 +117,12 @@ export default function NewBuildingPage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.type === 'application/pdf') {
+      if (file.type.startsWith('image/')) {
         setPdfFile(file);
         setError(null);
         await handlePdfUpload(file);
       } else {
-        setError('Please select a PDF file');
+        setError('Please select an image file (PNG, JPG, JPEG, or WEBP)');
       }
     }
   };
@@ -144,8 +144,7 @@ export default function NewBuildingPage() {
       const [result, error] = await startPdfAnalysis({ pdfUrl: blob.url });
 
       if (error) {
-        // Keep the existing error message but also encourage manual fallback
-        throw new Error('Failed to start PDF analysis');
+        throw new Error(error.message || 'Failed to start floor plan analysis');
       }
 
       setJobId(result.jobId);
@@ -199,7 +198,7 @@ export default function NewBuildingPage() {
             </div>
 
             <div className="text-xs text-slate-500">
-              Having trouble with PDFs? You can skip PDF upload entirely and use <strong>Draw walls manually</strong> below.
+              You can either upload a floor plan image or use <strong>Draw walls manually</strong> below.
             </div>
 
             <div>
@@ -220,13 +219,13 @@ export default function NewBuildingPage() {
 
             <div>
               <label htmlFor="pdf" className="block text-sm font-medium text-slate-300 mb-2">
-                Upload PDF Floor Plan (Optional)
+                Upload Floor Plan Image (Optional)
               </label>
               <input
                 type="file"
                 id="pdf"
                 name="pdf"
-                accept=".pdf,application/pdf"
+                accept=".png,.jpg,.jpeg,.webp,image/*"
                 onChange={handleFileChange}
                 disabled={analyzing}
                 className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -251,7 +250,7 @@ export default function NewBuildingPage() {
                 <div>
                   <h3 className="text-white font-semibold">Draw walls manually (optional)</h3>
                   <p className="text-slate-400 text-sm">
-                    Use this if you don’t have a PDF, or if PDF analysis fails.
+                    Use this if you don't have a floor plan image, or if image analysis fails.
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-slate-200 text-sm">
