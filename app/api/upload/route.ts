@@ -9,16 +9,19 @@ export async function POST(request: NextRequest) {
       body,
       request,
       onBeforeGenerateToken: async (pathname) => {
-        // Validate the pathname to ensure it's a PDF
-        if (!pathname.toLowerCase().endsWith('.pdf')) {
-          throw new Error('Only PDF files are allowed');
+        // Accept both PDFs and images
+        const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+        const hasValidExtension = validExtensions.some(ext => pathname.toLowerCase().endsWith(ext));
+        
+        if (!hasValidExtension) {
+          throw new Error('Only PDF and image files (PNG, JPG, JPEG, WEBP) are allowed');
         }
 
         return {
-          allowedContentTypes: ['application/pdf'],
+          allowedContentTypes: ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'],
           maximumSizeInBytes: 10 * 1024 * 1024, // 10MB
-          addRandomSuffix: true, // Generate unique filenames to avoid conflicts
-          allowOverwrite: true, // Allow overwriting existing blobs
+          addRandomSuffix: true,
+          allowOverwrite: true,
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {

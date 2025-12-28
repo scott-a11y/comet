@@ -3,10 +3,6 @@
 import { z } from "zod";
 import { createServerAction } from "zsa";
 import OpenAI from "openai";
-import { fromPath } from "pdf2pic";
-import fs from "fs/promises";
-import path from "path";
-import os from "os";
 
 const startAnalysisSchema = z.object({
   pdfUrl: z.string().url(),
@@ -16,53 +12,6 @@ const startAnalysisSchema = z.object({
 const checkStatusSchema = z.object({
   jobId: z.string(),
 });
-
-async function convertPdfToImage(pdfUrl: string): Promise<string> {
-  console.log('[PDF Conversion] Starting conversion for:', pdfUrl);
-  
-  // Download PDF to temp file
-  const response = await fetch(pdfUrl);
-  const buffer = await response.arrayBuffer();
-  const tempDir = os.tmpdir();
-  const tempPdfPath = path.join(tempDir, `pdf-${Date.now()}.pdf`);
-  
-  await fs.writeFile(tempPdfPath, Buffer.from(buffer));
-  console.log('[PDF Conversion] PDF downloaded to:', tempPdfPath);
-  
-  try {
-    // Convert first page to image
-    const options = {
-      density: 300, // DPI for quality
-      saveFilename: `page-${Date.now()}`,
-      savePath: tempDir,
-      format: "png",
-      width: 2000,
-      height: 2000,
-    };
-    
-    const convert = fromPath(tempPdfPath, options);
-    const result = await convert(1, { responseType: "base64" });
-    
-    console.log('[PDF Conversion] Conversion complete');
-    
-    // Clean up temp PDF
-    await fs.unlink(tempPdfPath).catch(() => {});
-    
-    // Ensure we have valid base64 data
-    const base64Data = result.base64 || result;
-    if (!base64Data || typeof base64Data !== 'string') {
-      throw new Error('Failed to extract base64 data from PDF conversion');
-    }
-    
-    // Return base64 data URL (remove any existing data: prefix if present)
-    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
-    return `data:image/png;base64,${cleanBase64}`;
-  } catch (error) {
-    // Clean up on error
-    await fs.unlink(tempPdfPath).catch(() => {});
-    throw error;
-  }
-}
 
 export const startPdfAnalysis = createServerAction()
   .input(startAnalysisSchema)
@@ -80,22 +29,21 @@ export const startPdfAnalysis = createServerAction()
         apiKey: process.env.OPENAI_API_KEY,
       });
 
-      // Convert PDF to image if needed
-      let imageUrl = input.pdfUrl;
-      const isPdf = input.pdfUrl.toLowerCase().includes('.pdf');
+      // Check if URL is an image or PDF
+      const url = input.pdfUrl.toLowerCase();
+      const isImage = url.includes('.png') || url.includes('.jpg') || url.includes('.jpeg') || url.includes('.webp');
       
-      if (isPdf) {
-        console.log('[PDF Analysis] Converting PDF to image...');
-        imageUrl = await convertPdfToImage(input.pdfUrl);
+      if (!isImage) {
+        throw new Error('Please upload an image file (PNG, JPG, JPEG, WEBP). PDF conversion is not yet supported on serverless platforms.');
       }
 
-      console.log('[PDF Analysis] Calling OpenAI Vision API...');
+      console.log('[PDF Analysis] Calling OpenAI Vision API with image...');
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: "Analyze this floor plan image. Extract width, length (in feet) and provide a summary. Return JSON only with keys: width, length, height (optional), summary."
+            content: "Analyze this floor plan image. Extract width, length (in feet) and provide a summary. If dimensions are shown in the image, use those. Otherwise, estimate based on typical building sizes. Return JSON only with keys: width, length, height (optional), summary."
           },
           {
             role: "user",
@@ -103,7 +51,7 @@ export const startPdfAnalysis = createServerAction()
               {
                 type: "image_url",
                 image_url: { 
-                  url: imageUrl,
+                  url: input.pdfUrl,
                   detail: "high"
                 }
               }
