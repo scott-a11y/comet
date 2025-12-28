@@ -8,16 +8,17 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const dynamicParams = true;
 
-interface BuildingPageProps {
-  params: {
-    id: string;
-  };
-}
+type BuildingPageProps = {
+  // Next.js 16 can provide params as a Promise in some runtimes.
+  // Awaiting ensures consistent behavior between dev/build/prod.
+  params: Promise<{ id: string }> | { id: string };
+};
 
 export default async function BuildingPage({ params }: BuildingPageProps) {
-  const buildingId = parseInt(params.id, 10);
+  const { id } = await Promise.resolve(params);
+  const buildingId = parseInt(id, 10);
 
-  if (isNaN(buildingId)) {
+  if (Number.isNaN(buildingId)) {
     notFound();
   }
 
