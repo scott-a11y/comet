@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 
 // Force dynamic rendering for Vercel
@@ -38,6 +38,12 @@ interface PageProps {
 
 export default async function LayoutCanvasPage({ params }: PageProps) {
   const { id, layoutId } = await params
+
+  // Belt-and-suspenders: prevent treating "new" as a numeric layout id.
+  if (layoutId === 'new') {
+    redirect(`/buildings/${id}/layouts/new`)
+  }
+
   const layout = await getLayout(id, layoutId)
   
   if (!layout) {

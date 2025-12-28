@@ -7,6 +7,8 @@ import { upload } from '@vercel/blob/client';
 import { startPdfAnalysis } from '@/actions/analyze';
 import { useJobPolling } from '@/hooks/use-job-polling';
 import { FloorPlanData } from '@/lib/types/pdf-analysis';
+import { WallEditor } from './_components/wall-editor';
+import type { BuildingFloorGeometry } from '@/lib/types/building-geometry';
 
 export default function NewBuildingPage() {
   const router = useRouter();
@@ -17,6 +19,11 @@ export default function NewBuildingPage() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<FloorPlanData | null>(null);
+  const [manualEnabled, setManualEnabled] = useState(false);
+  const [floorGeometry, setFloorGeometry] = useState<BuildingFloorGeometry | null>(null);
+  const [floorScaleFtPerUnit, setFloorScaleFtPerUnit] = useState<number | null>(null);
+  const [floorPlanePoints, setFloorPlanePoints] = useState<Array<{ x: number; y: number }> | null>(null);
+  const [floorValidationError, setFloorValidationError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -45,13 +52,37 @@ export default function NewBuildingPage() {
     setError(null);
 
     try {
+      const widthFt = formData.width ? parseFloat(formData.width) : undefined;
+      const depthFt = formData.length ? parseFloat(formData.length) : undefined;
+      const ceilingHeightFt = formData.height ? parseFloat(formData.height) : undefined;
+
+      const hasDims = typeof widthFt === 'number' && !Number.isNaN(widthFt)
+        && typeof depthFt === 'number' && !Number.isNaN(depthFt);
+      const hasGeom = !!floorGeometry;
+
+      if (!hasDims && !hasGeom) {
+        throw new Error('Please provide dimensions, or draw walls manually.');
+      }
+
+      if (hasGeom) {
+        if (floorValidationError) {
+          throw new Error(`Wall drawing is invalid: ${floorValidationError}`);
+        }
+        if (!floorScaleFtPerUnit) {
+          throw new Error('Please calibrate your drawing (ft per unit) before creating the building.');
+        }
+      }
+
       const requestData = {
         name: formData.name,
-        widthFt: parseFloat(formData.width),
-        depthFt: parseFloat(formData.length),
-        ceilingHeightFt: parseFloat(formData.height),
+        widthFt: hasDims ? widthFt : undefined,
+        depthFt: hasDims ? depthFt : undefined,
+        ceilingHeightFt: ceilingHeightFt,
         pdfUrl: pdfUrl || undefined,
         extractedData: extractedData || undefined,
+        floorGeometry: floorGeometry || undefined,
+        floorScaleFtPerUnit: floorScaleFtPerUnit || undefined,
+        // keep address client-only for now; not in DB schema
       };
 
       const response = await fetch('/api/buildings', {
@@ -113,6 +144,7 @@ export default function NewBuildingPage() {
       const [result, error] = await startPdfAnalysis({ pdfUrl: blob.url });
 
       if (error) {
+        // Keep the existing error message but also encourage manual fallback
         throw new Error('Failed to start PDF analysis');
       }
 
@@ -166,6 +198,10 @@ export default function NewBuildingPage() {
               />
             </div>
 
+            <div className="text-xs text-slate-500">
+              Having trouble with PDFs? You can skip PDF upload entirely and use <strong>Draw walls manually</strong> below.
+            </div>
+
             <div>
               <label htmlFor="address" className="block text-sm font-medium text-slate-300 mb-2">
                 Address *
@@ -210,16 +246,52 @@ export default function NewBuildingPage() {
               )}
             </div>
 
+            <div className="bg-slate-900/30 border border-slate-700 rounded-lg p-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-white font-semibold">Draw walls manually (optional)</h3>
+                  <p className="text-slate-400 text-sm">
+                    Use this if you don’t have a PDF, or if PDF analysis fails.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-slate-200 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={manualEnabled}
+                    onChange={(e) => setManualEnabled(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  Enable manual drawing
+                </label>
+              </div>
+
+              {manualEnabled && (
+                <div className="mt-4">
+                  <WallEditor
+                    onChange={({ geometry, scaleFtPerUnit, floorPlanePoints, validationError }) => {
+                      setFloorGeometry(geometry);
+                      setFloorScaleFtPerUnit(scaleFtPerUnit);
+                      setFloorPlanePoints(floorPlanePoints);
+                      setFloorValidationError(validationError);
+                    }}
+                  />
+
+                  <div className="mt-3 text-xs text-slate-400">
+                    When you create the building, we’ll save the vertex/segment geometry + calibration on the building.
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label htmlFor="width" className="block text-sm font-medium text-slate-300 mb-2">
-                  Width (ft) *
+                  Width (ft)
                 </label>
                 <input
                   type="number"
                   id="width"
                   name="width"
-                  required
                   min="1"
                   step="0.1"
                   value={formData.width}
@@ -231,13 +303,12 @@ export default function NewBuildingPage() {
 
               <div>
                 <label htmlFor="length" className="block text-sm font-medium text-slate-300 mb-2">
-                  Length (ft) *
+                  Length (ft)
                 </label>
                 <input
                   type="number"
                   id="length"
                   name="length"
-                  required
                   min="1"
                   step="0.1"
                   value={formData.length}
@@ -249,13 +320,12 @@ export default function NewBuildingPage() {
 
               <div>
                 <label htmlFor="height" className="block text-sm font-medium text-slate-300 mb-2">
-                  Height (ft) *
+                  Height (ft)
                 </label>
                 <input
                   type="number"
                   id="height"
                   name="height"
-                  required
                   min="1"
                   step="0.1"
                   value={formData.height}
@@ -264,6 +334,10 @@ export default function NewBuildingPage() {
                   placeholder="16"
                 />
               </div>
+            </div>
+
+            <div className="text-xs text-slate-500">
+              Tip: You can either enter Width/Length/Height, or enable manual drawing and calibrate the floor outline.
             </div>
 
             <div className="flex gap-4 pt-4">

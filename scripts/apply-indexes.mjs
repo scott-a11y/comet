@@ -33,6 +33,7 @@ async function run() {
         await client.query(sql);
 
         console.log('✅ SUCCESS: Database indexes applied!');
+        console.log('ℹ️  Prefer Prisma migrations for deploys: `npx prisma migrate deploy`');
     } catch (err) {
         console.error('❌ FAILED:', err);
     } finally {

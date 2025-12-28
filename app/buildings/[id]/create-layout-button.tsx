@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createLayout } from "@/actions/layouts";
 
 interface CreateLayoutButtonProps {
   buildingId: string;
@@ -13,33 +12,10 @@ export function CreateLayoutButton({ buildingId }: CreateLayoutButtonProps) {
   const router = useRouter();
 
   const handleCreateLayout = async () => {
-    const layoutName = prompt("Enter a name for your new layout:");
-
-    if (!layoutName || layoutName.trim() === "") {
-      return;
-    }
-
     setIsCreating(true);
-
-    try {
-      const [result, error] = await createLayout({
-        buildingId,
-        name: layoutName.trim(),
-      });
-
-      if (error) {
-        alert(`Failed to create layout: ${error.message}`);
-        return;
-      }
-
-      // Redirect to the editor
-      router.push(`/editor/${result.layout.id}`);
-    } catch (error) {
-      console.error("Error creating layout:", error);
-      alert("Failed to create layout. Please try again.");
-    } finally {
-      setIsCreating(false);
-    }
+    // Delegate creation to the server route so the URL is canonical:
+    // /buildings/:id/layouts/new -> creates -> redirects to /buildings/:id/layouts/:layoutId
+    router.push(`/buildings/${buildingId}/layouts/new`);
   };
 
   return (

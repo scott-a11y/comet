@@ -11,13 +11,18 @@ datasource db {
 model ShopBuilding {
   id              Int              @id @default(autoincrement())
   name            String
-  widthFt         Float            @map("width_ft")
-  depthFt         Float            @map("depth_ft")
+  widthFt         Float?           @map("width_ft")
+  depthFt         Float?           @map("depth_ft")
   ceilingHeightFt Float?           @map("ceiling_height_ft")
   hasMezzanine    Boolean          @default(false) @map("has_mezzanine")
   notes           String?          @db.Text
   pdfUrl          String?          @map("pdf_url")
   extractedData   Json?            @map("extracted_data")
+  // Manual-drawn floor geometry (2D) stored as JSON for flexibility.
+  // See lib/types/building-geometry.ts
+  floorGeometry   Json?            @map("floor_geometry")
+  // Calibration: feet per canvas unit (Konva world unit)
+  floorScaleFtPerUnit Float?       @map("floor_scale_ft_per_unit")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   zones           ShopZone[]

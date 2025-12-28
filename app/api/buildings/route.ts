@@ -45,7 +45,17 @@ export async function POST(request: Request) {
 
     // Create building
     const building = await prisma.shopBuilding.create({
-      data: validated
+      data: {
+        ...validated,
+        // Prisma expects null for optional DB columns when explicitly omitted
+        widthFt: validated.widthFt ?? null,
+        depthFt: validated.depthFt ?? null,
+        ceilingHeightFt: validated.ceilingHeightFt ?? null,
+        pdfUrl: validated.pdfUrl ?? null,
+        extractedData: validated.extractedData ?? null,
+        floorGeometry: (validated as any).floorGeometry ?? null,
+        floorScaleFtPerUnit: (validated as any).floorScaleFtPerUnit ?? null,
+      }
     })
 
     return NextResponse.json(building, { status: 201 })

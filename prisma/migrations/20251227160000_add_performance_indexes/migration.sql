@@ -1,12 +1,9 @@
--- Critical Performance Indexes for Comet SaaS
+-- Add performance indexes for common query patterns.
 --
--- NOTE: This file is kept for convenience, but the source of truth is the
--- Prisma migration:
---   prisma/migrations/20251227160000_add_performance_indexes/migration.sql
---
--- If you prefer applying indexes manually (instead of via Prisma migrations),
--- you can run:
---   psql $DATABASE_URL -f database-indexes.sql
+-- Notes:
+-- - Prisma automatically creates indexes for primary keys and unique constraints,
+--   but not for all foreign keys.
+-- - These are safe to run multiple times due to IF NOT EXISTS.
 
 -- ShopBuilding
 CREATE INDEX IF NOT EXISTS "idx_shop_buildings_name" ON "shop_buildings"("name");
