@@ -9,27 +9,27 @@ datasource db {
 }
 
 model ShopBuilding {
-  id              Int              @id @default(autoincrement())
-  name            String
-  widthFt         Float?           @map("width_ft")
-  depthFt         Float?           @map("depth_ft")
-  ceilingHeightFt Float?           @map("ceiling_height_ft")
-  hasMezzanine    Boolean          @default(false) @map("has_mezzanine")
-  notes           String?          @db.Text
-  pdfUrl          String?          @map("pdf_url")
-  extractedData   Json?            @map("extracted_data")
+  id                  Int              @id @default(autoincrement())
+  name                String
+  widthFt             Float?           @map("width_ft")
+  depthFt             Float?           @map("depth_ft")
+  ceilingHeightFt     Float?           @map("ceiling_height_ft")
+  hasMezzanine        Boolean          @default(false) @map("has_mezzanine")
+  notes               String?          @db.Text
+  pdfUrl              String?          @map("pdf_url")
+  extractedData       Json?            @map("extracted_data")
   // Manual-drawn floor geometry (2D) stored as JSON for flexibility.
   // See lib/types/building-geometry.ts
-  floorGeometry   Json?            @map("floor_geometry")
+  floorGeometry       Json?            @map("floor_geometry")
   // Calibration: feet per canvas unit (Konva world unit)
-  floorScaleFtPerUnit Float?       @map("floor_scale_ft_per_unit")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-  zones           ShopZone[]
-  utilityPoints   UtilityPoint[]
-  equipment       Equipment[]
-  layouts         LayoutInstance[]
-  designerLayouts Layout[]
+  floorScaleFtPerUnit Float?           @map("floor_scale_ft_per_unit")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  zones               ShopZone[]
+  utilityPoints       UtilityPoint[]
+  equipment           Equipment[]
+  layouts             LayoutInstance[]
+  designerLayouts     Layout[]
 
   @@index([name])
   @@index([createdAt])
@@ -48,6 +48,7 @@ model ShopZone {
   shopBuilding   ShopBuilding @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
   equipment      Equipment[]
 
+  @@index([shopBuildingId])
   @@map("shop_zones")
 }
 
@@ -70,6 +71,7 @@ model UtilityPoint {
   airRunsFrom    AirRun[]            @relation("AirRunFromUtility")
   circuits       ElectricalCircuit[] @relation("CircuitPanel")
 
+  @@index([shopBuildingId])
   @@index([type])
   @@map("utility_points")
 }
@@ -97,6 +99,8 @@ model Equipment {
   airRuns             AirRun[]
   circuits            EquipmentCircuit[]
 
+  @@index([shopBuildingId])
+  @@index([preferredZoneId])
   @@index([name])
   @@index([category])
   @@map("equipment")
@@ -147,6 +151,7 @@ model LayoutInstance {
   airRuns            AirRun[]
   circuits           ElectricalCircuit[]
 
+  @@index([shopBuildingId])
   @@index([createdAt])
   @@map("layout_instances")
 }
@@ -163,6 +168,7 @@ model EquipmentLayoutPosition {
   equipment   Equipment      @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
 
   @@unique([layoutId, equipmentId])
+  @@index([equipmentId])
   @@map("equipment_layout_positions")
 }
 
@@ -182,6 +188,7 @@ model DustRun {
   fromUtility        UtilityPoint?  @relation("DustRunFromUtility", fields: [fromUtilityId], references: [id])
   toUtility          UtilityPoint?  @relation("DustRunToUtility", fields: [toUtilityId], references: [id])
 
+  @@index([layoutId])
   @@map("dust_runs")
 }
 
@@ -196,6 +203,7 @@ model AirRun {
   fromUtility    UtilityPoint   @relation("AirRunFromUtility", fields: [fromUtilityId], references: [id])
   toEquipment    Equipment?     @relation(fields: [toEquipmentId], references: [id])
 
+  @@index([layoutId])
   @@map("air_runs")
 }
 
@@ -213,6 +221,8 @@ model ElectricalCircuit {
   panel             UtilityPoint       @relation("CircuitPanel", fields: [panelUtilityId], references: [id])
   equipmentCircuits EquipmentCircuit[]
 
+  @@index([layoutId])
+  @@index([panelUtilityId])
   @@map("electrical_circuits")
 }
 
@@ -230,46 +240,50 @@ model EquipmentCircuit {
 
 // Layout models for shop designer
 model Layout {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String?
 
   // The building this layout belongs to
-  buildingId  Int
-  building    ShopBuilding @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  buildingId Int
+  building   ShopBuilding @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
   // JSON storage for the canvas state (positions, rotation, etc.)
   // We use JSONB for flexibility in the drag-and-drop UI
   canvasState Json?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relation to equipment instances used in this layout
   equipmentInstances EquipmentInstance[]
+
+  @@index([buildingId])
 }
 
 // Specific instances of equipment placed on a layout
 model EquipmentInstance {
-  id        String   @id @default(cuid())
-  layoutId  String
-  layout    Layout   @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  layoutId String
+  layout   Layout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
 
   // Reference to a catalog item (future feature)
   // catalogItemId String?
 
-  name      String   // e.g., "Table Saw 1"
-  type      String   // e.g., "SAW", "DUST_COLLECTOR"
+  name String // e.g., "Table Saw 1"
+  type String // e.g., "SAW", "DUST_COLLECTOR"
 
   // Physical properties override
-  width     Float
-  length    Float
+  width  Float
+  length Float
 
   // Position data (Cached here for querying, detailed visual data in canvasState)
-  x         Float    @default(0)
-  y         Float    @default(0)
-  rotation  Float    @default(0)
+  x        Float @default(0)
+  y        Float @default(0)
+  rotation Float @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([layoutId])
 }

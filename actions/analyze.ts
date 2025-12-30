@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { createServerAction } from "zsa";
 import OpenAI from "openai";
+import { env } from "@/lib/env";
 
 // Input schema for floor plan image analysis
 const startAnalysisSchema = z.object({
@@ -38,29 +39,23 @@ const legacyAnalysisSchema = z.object({
 // Accept either schema
 const analysisInputSchema = z.union([startAnalysisSchema, legacyAnalysisSchema]);
 
-// Output schema to validate OpenAI response
-const analysisDataSchema = z.object({
-  width: z.number().positive(),
-  length: z.number().positive(),
-  height: z.number().positive().optional(),
-  summary: z.string().min(10),
-});
+import { analysisDataSchema } from "@/lib/validations/analysis";
 
 export const startFloorPlanAnalysis = createServerAction()
   .input(analysisInputSchema)
   .handler(async ({ input }) => {
     console.log('[Floor Plan Analysis] Starting analysis for:', input.imageUrl);
-    
+
     try {
       // Validate environment
-      if (!process.env.OPENAI_API_KEY) {
+      if (!env.OPENAI_API_KEY) {
         console.error('[Floor Plan Analysis] OpenAI API key not configured');
         throw new Error("OpenAI API key not configured. Please add OPENAI_API_KEY to environment variables.");
       }
 
       console.log('[Floor Plan Analysis] Creating OpenAI client...');
       const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
+        apiKey: env.OPENAI_API_KEY,
         timeout: 30000, // 30 second timeout
       });
 
@@ -69,13 +64,13 @@ export const startFloorPlanAnalysis = createServerAction()
       const pathname = url.pathname.toLowerCase();
       const validExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
       const isValidImage = validExtensions.some(ext => pathname.endsWith(ext));
-      
+
       if (!isValidImage) {
         throw new Error('Please upload an image file (PNG, JPG, JPEG, WEBP). PDF conversion is not yet supported on serverless platforms.');
       }
 
       console.log('[Floor Plan Analysis] Calling OpenAI Vision API...');
-      
+
       // Add timeout wrapper
       const responsePromise = openai.chat.completions.create({
         model: "gpt-4o",
@@ -89,7 +84,7 @@ export const startFloorPlanAnalysis = createServerAction()
             content: [
               {
                 type: "image_url",
-                image_url: { 
+                image_url: {
                   url: input.imageUrl,
                   detail: "high"
                 }
@@ -102,7 +97,7 @@ export const startFloorPlanAnalysis = createServerAction()
         temperature: 0.1
       });
 
-      const timeoutPromise = new Promise<never>((_, reject) => 
+      const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('OpenAI API request timed out after 30 seconds')), 30000)
       );
 
@@ -110,7 +105,7 @@ export const startFloorPlanAnalysis = createServerAction()
 
       console.log('[Floor Plan Analysis] OpenAI response received');
       const content = response.choices[0]?.message?.content;
-      
+
       if (!content) {
         console.error('[Floor Plan Analysis] No content in OpenAI response');
         throw new Error("No analysis returned from OpenAI. The model may have failed to process the image.");
@@ -142,7 +137,7 @@ export const startFloorPlanAnalysis = createServerAction()
       };
     } catch (error) {
       console.error('[Floor Plan Analysis] Error:', error);
-      
+
       // Provide specific error messages
       if (error instanceof Error) {
         // Already has a good error message
@@ -152,7 +147,7 @@ export const startFloorPlanAnalysis = createServerAction()
         // Wrap unexpected errors with context
         throw new Error(`Floor plan analysis failed: ${error.message}`);
       }
-      
+
       throw new Error('Floor plan analysis failed due to an unknown error. Please try again.');
     }
   });

@@ -21,6 +21,7 @@ export const env = createEnv({
       })
       .optional(),
     SENTRY_DSN: z.string().url().optional(),
+    OPENAI_API_KEY: z.string().min(1).optional(),
   },
   client: {
     // Optional Clerk publishable key (starts with pk_)

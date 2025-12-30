@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { z } from 'zod';
+import { env } from '@/lib/env';
 import { PDFAnalysisResponse, FloorPlanData } from '@/lib/types/pdf-analysis';
+import { analysisDataSchema } from '@/lib/validations/analysis';
 
 const analyzeSchema = z.object({
   pdfUrl: z.string().url(),
@@ -9,7 +11,7 @@ const analyzeSchema = z.object({
 
 function getOpenAIClient() {
   return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: env.OPENAI_API_KEY,
   });
 }
 
@@ -18,7 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { pdfUrl } = analyzeSchema.parse(body);
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!env.OPENAI_API_KEY) {
       return NextResponse.json(
         { success: false, error: 'OpenAI API key not configured' } as PDFAnalysisResponse,
         { status: 500 }
@@ -130,12 +132,18 @@ If you cannot determine certain values, use null or omit the field. Focus on acc
       const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/\{[\s\S]*\}/);
       const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
 
-      analysisData = JSON.parse(jsonString);
+      const rawData = JSON.parse(jsonString);
 
-      // Validate the structure
-      if (typeof analysisData.width !== 'number' || typeof analysisData.length !== 'number') {
-        throw new Error('Invalid analysis structure');
+      // Validate the structure using shared schema
+      const validated = analysisDataSchema.safeParse(rawData);
+
+      if (!validated.success) {
+        console.error('Validation failed:', validated.error);
+        throw new Error('Analysis result missing required fields');
       }
+
+      // Cast verified data to FloorPlanData (compatible type)
+      analysisData = validated.data as unknown as FloorPlanData;
 
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
