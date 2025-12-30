@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
-import { checkAnalysisStatus } from '@/actions/analyze';
 
 interface UseJobPollingOptions {
   jobId: string | null;
   onComplete: (data: any) => void;
 }
+
+// TODO: Implement proper job status checking
+// For now, immediately return COMPLETED since analysis is synchronous
+const checkAnalysisStatus = async ({ jobId }: { jobId: string }): Promise<[{ status: string; data: any } | null, Error | null]> => {
+  // Stub implementation - in production this would check actual job status
+  return [{ status: 'COMPLETED', data: null }, null];
+};
 
 export function useJobPolling({ jobId, onComplete }: UseJobPollingOptions) {
   const [status, setStatus] = useState<'PENDING' | 'COMPLETED' | 'FAILED' | null>(null);
@@ -26,7 +32,7 @@ export function useJobPolling({ jobId, onComplete }: UseJobPollingOptions) {
       try {
         const [result, error] = await checkAnalysisStatus({ jobId });
 
-        if (error) {
+        if (error || !result) {
           console.error('Polling error:', error);
           setStatus('FAILED');
           setIsPolling(false);

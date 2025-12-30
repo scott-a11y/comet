@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { createLayoutSchema } from '@/lib/validations/layouts'
+import { withAuth } from '@/lib/auth-middleware'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
-export async function GET(request: Request) {
+export const GET = withAuth(async (userId: string, request: Request) => {
   try {
     const { searchParams } = new URL(request.url)
     const buildingId = searchParams.get('buildingId')
@@ -32,14 +34,14 @@ export async function GET(request: Request) {
       }
     })
     
-    return NextResponse.json(layouts)
+    return apiSuccess(layouts)
   } catch (error) {
     console.error('Error fetching layouts:', error)
-    return NextResponse.json({ error: 'Failed to fetch layouts' }, { status: 500 })
+    return apiError('Failed to fetch layouts', 500)
   }
-}
+})
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (userId: string, request: Request) => {
   try {
     const body = await request.json()
 
@@ -52,10 +54,7 @@ export async function POST(request: Request) {
     })
 
     if (!building) {
-      return NextResponse.json(
-        { error: 'Shop building not found' },
-        { status: 404 }
-      )
+      return apiError('Shop building not found', 404)
     }
 
     // Create layout
@@ -63,17 +62,19 @@ export async function POST(request: Request) {
       data: validated
     })
 
-    return NextResponse.json(layout, { status: 201 })
+    return apiSuccess(layout, 201)
   } catch (error) {
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
+          success: false,
           error: 'Invalid input',
           details: error.errors.map(e => ({
             field: e.path.join('.'),
             message: e.message
-          }))
+          })),
+          timestamp: new Date().toISOString()
         },
         { status: 400 }
       )
@@ -86,9 +87,6 @@ export async function POST(request: Request) {
 
     // Generic error
     console.error('Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create layout' },
-      { status: 500 }
-    )
+    return apiError('Failed to create layout', 500)
   }
-}
+})

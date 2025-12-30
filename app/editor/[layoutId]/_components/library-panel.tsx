@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import { useLayoutStore } from "@/lib/store/layout-store";
 import { EQUIPMENT_CATALOG, CATEGORIES, type CatalogItem, type EquipmentCategory } from "@/lib/data/catalog";
 
+const SCALE_FACTOR = 10; // pixels per foot (editor canvas convention)
+
 export function LibraryPanel() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<EquipmentCategory | "ALL">("ALL");
@@ -21,15 +23,21 @@ export function LibraryPanel() {
     addItem({
       id: crypto.randomUUID(),
       type: "EQUIPMENT",
-      x: 10, // Default feet (will be converted to pixels)
-      y: 10,
-      width: item.width,
-      length: item.length,
+      x: 10 * SCALE_FACTOR,
+      y: 10 * SCALE_FACTOR,
+      width: item.width * SCALE_FACTOR,
+      length: item.length * SCALE_FACTOR,
       rotation: 0,
       metadata: {
         ...item.defaults,
         catalogId: item.id,
-        catalogColor: item.color
+        catalogColor: item.color,
+        // Persist ports in px for simple rendering/routing.
+        ports: (item.ports ?? []).map((p) => ({
+          ...p,
+          offsetX: p.offsetX * SCALE_FACTOR,
+          offsetY: p.offsetY * SCALE_FACTOR,
+        }))
       }
     });
   };

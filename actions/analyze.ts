@@ -4,46 +4,85 @@ import { z } from "zod";
 import { createServerAction } from "zsa";
 import OpenAI from "openai";
 
+// Input schema for floor plan image analysis
 const startAnalysisSchema = z.object({
-  pdfUrl: z.string().url(),
+  imageUrl: z.string().url().refine(
+    (url) => {
+      try {
+        const urlObj = new URL(url);
+        // Only allow Vercel Blob storage or localhost for development
+        const allowedHosts = [
+          'blob.vercel-storage.com',
+          'localhost',
+          '127.0.0.1'
+        ];
+        return allowedHosts.some(host => urlObj.hostname.endsWith(host));
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Image URL must be from Vercel Blob storage' }
+  ),
   buildingId: z.number().optional(),
 });
 
-const checkStatusSchema = z.object({
-  jobId: z.string(),
+// Backward compatibility: accept pdfUrl and transform to imageUrl
+const legacyAnalysisSchema = z.object({
+  pdfUrl: z.string().url(),
+  buildingId: z.number().optional(),
+}).transform((data) => ({
+  imageUrl: data.pdfUrl,
+  buildingId: data.buildingId,
+})).pipe(startAnalysisSchema);
+
+// Accept either schema
+const analysisInputSchema = z.union([startAnalysisSchema, legacyAnalysisSchema]);
+
+// Output schema to validate OpenAI response
+const analysisDataSchema = z.object({
+  width: z.number().positive(),
+  length: z.number().positive(),
+  height: z.number().positive().optional(),
+  summary: z.string().min(10),
 });
 
-export const startPdfAnalysis = createServerAction()
-  .input(startAnalysisSchema)
+export const startFloorPlanAnalysis = createServerAction()
+  .input(analysisInputSchema)
   .handler(async ({ input }) => {
-    console.log('[PDF Analysis] Starting analysis for:', input.pdfUrl);
+    console.log('[Floor Plan Analysis] Starting analysis for:', input.imageUrl);
     
     try {
+      // Validate environment
       if (!process.env.OPENAI_API_KEY) {
-        console.error('[PDF Analysis] OpenAI API key not configured');
-        throw new Error("OpenAI API key not configured");
+        console.error('[Floor Plan Analysis] OpenAI API key not configured');
+        throw new Error("OpenAI API key not configured. Please add OPENAI_API_KEY to environment variables.");
       }
 
-      console.log('[PDF Analysis] Creating OpenAI client...');
+      console.log('[Floor Plan Analysis] Creating OpenAI client...');
       const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
+        timeout: 30000, // 30 second timeout
       });
 
-      // Check if URL is an image or PDF
-      const url = input.pdfUrl.toLowerCase();
-      const isImage = url.includes('.png') || url.includes('.jpg') || url.includes('.jpeg') || url.includes('.webp');
+      // Validate file type from URL
+      const url = new URL(input.imageUrl);
+      const pathname = url.pathname.toLowerCase();
+      const validExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
+      const isValidImage = validExtensions.some(ext => pathname.endsWith(ext));
       
-      if (!isImage) {
+      if (!isValidImage) {
         throw new Error('Please upload an image file (PNG, JPG, JPEG, WEBP). PDF conversion is not yet supported on serverless platforms.');
       }
 
-      console.log('[PDF Analysis] Calling OpenAI Vision API with image...');
-      const response = await openai.chat.completions.create({
+      console.log('[Floor Plan Analysis] Calling OpenAI Vision API...');
+      
+      // Add timeout wrapper
+      const responsePromise = openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: "Analyze this floor plan image. Extract width, length (in feet) and provide a summary. If dimensions are shown in the image, use those. Otherwise, estimate based on typical building sizes. Return JSON only with keys: width, length, height (optional), summary."
+            content: "Analyze this floor plan image and extract dimensions. If dimensions are clearly marked in the image, use those exact values. Otherwise, estimate based on typical building sizes. Return JSON with: width (number in feet), length (number in feet), height (optional number in feet), summary (string describing the floor plan)."
           },
           {
             role: "user",
@@ -51,7 +90,7 @@ export const startPdfAnalysis = createServerAction()
               {
                 type: "image_url",
                 image_url: { 
-                  url: input.pdfUrl,
+                  url: input.imageUrl,
                   detail: "high"
                 }
               }
@@ -63,45 +102,60 @@ export const startPdfAnalysis = createServerAction()
         temperature: 0.1
       });
 
-      console.log('[PDF Analysis] OpenAI response received');
-      const content = response.choices[0].message.content;
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('OpenAI API request timed out after 30 seconds')), 30000)
+      );
+
+      const response = await Promise.race([responsePromise, timeoutPromise]);
+
+      console.log('[Floor Plan Analysis] OpenAI response received');
+      const content = response.choices[0]?.message?.content;
+      
       if (!content) {
-        console.error('[PDF Analysis] No content in OpenAI response');
-        throw new Error("No analysis returned from OpenAI");
+        console.error('[Floor Plan Analysis] No content in OpenAI response');
+        throw new Error("No analysis returned from OpenAI. The model may have failed to process the image.");
       }
 
-      const data = JSON.parse(content);
-      console.log('[PDF Analysis] Successfully parsed data:', data);
+      // Parse and validate response
+      let parsedData;
+      try {
+        parsedData = JSON.parse(content);
+      } catch (parseError) {
+        console.error('[Floor Plan Analysis] Failed to parse OpenAI response:', content);
+        throw new Error("Invalid response format from OpenAI. Please try again.");
+      }
+
+      // Validate data structure
+      const validatedData = analysisDataSchema.safeParse(parsedData);
+      if (!validatedData.success) {
+        console.error('[Floor Plan Analysis] Invalid data structure:', validatedData.error);
+        console.error('[Floor Plan Analysis] Received data:', parsedData);
+        throw new Error("OpenAI returned incomplete dimensions. Please ensure the image clearly shows the floor plan.");
+      }
+
+      console.log('[Floor Plan Analysis] Successfully validated data:', validatedData.data);
 
       return {
         success: true,
         jobId: `analysis-${Date.now()}`,
-        data,
+        data: validatedData.data,
       };
     } catch (error) {
-      console.error('[PDF Analysis] Error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`PDF analysis failed: ${errorMessage}`);
+      console.error('[Floor Plan Analysis] Error:', error);
+      
+      // Provide specific error messages
+      if (error instanceof Error) {
+        // Already has a good error message
+        if (error.message.includes('OpenAI') || error.message.includes('upload') || error.message.includes('timeout')) {
+          throw error;
+        }
+        // Wrap unexpected errors with context
+        throw new Error(`Floor plan analysis failed: ${error.message}`);
+      }
+      
+      throw new Error('Floor plan analysis failed due to an unknown error. Please try again.');
     }
   });
 
-export const checkAnalysisStatus = createServerAction()
-  .input(checkStatusSchema)
-  .handler(async ({ input }) => {
-    try {
-      // In Trigger.dev v3, we need to use the handle approach
-      // For now, we'll use a simple polling mechanism
-      // This would typically be handled by Trigger.dev's webhook or subscription system
-
-      // For development, we'll use a mock approach until the real API is confirmed
-      return {
-        status: "PENDING",
-        data: null,
-      };
-    } catch (error) {
-      return {
-        status: "FAILED",
-        data: null,
-      };
-    }
-  });
+// Backward compatibility - keep old name as alias
+export const startPdfAnalysis = startFloorPlanAnalysis;

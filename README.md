@@ -51,6 +51,45 @@ A modern web application for designing and managing shop layouts for cabinet and
 - Route management (add/delete)
 - Visual SVG-based rendering
 
+## BOM‑V2 Floor Plan / Routing Editor (MVP)
+
+The current MVP editor lives at:
+
+- `app/editor/[layoutId]`
+
+It persists a **versioned plan JSON** into `layout.canvasState`.
+
+### Plan JSON shape (v2)
+
+```ts
+type LayoutPlanV2 = {
+  version: 2
+  ftPerPx: number | null
+  items: CanvasItem[]
+  runs: Run[]
+}
+
+type Run = {
+  id: string
+  system: "ELECTRICAL" | "AIR" | "DUCT" | "DUST" | "PIPING"
+  from: { itemId: string; portId: string }
+  to: { itemId: string; portId: string }
+  segments: Array<{ x1: number; y1: number; x2: number; y2: number }>
+}
+```
+
+### Adding equipment ports
+
+Equipment definitions live in `lib/data/catalog.ts`. Add ports like:
+
+```ts
+ports: [
+  { id: "power", system: "ELECTRICAL", offsetX: 0.1, offsetY: 0.1 }, // offsets in FEET
+]
+```
+
+When an item is placed from the Library, ports are stored on the canvas item at `item.metadata.ports` with offsets converted to **pixels**.
+
 ### Tech Stack
 
 - **Framework**: Next.js 14 (App Router)

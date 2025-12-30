@@ -2,10 +2,25 @@
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from 'react-hot-toast'
 
+function isAuthEnabledClient() {
+  // Client-side only: we can only rely on NEXT_PUBLIC_* vars.
+  // If no publishable key is present, do NOT mount ClerkProvider.
+  return !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+}
+
+const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      {children}
+    <>
+      {isAuthEnabledClient() ? (
+        <ClerkProvider publishableKey={clerkPublishableKey}>
+          {children}
+        </ClerkProvider>
+      ) : (
+        children
+      )}
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -30,6 +45,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
         }}
       />
-    </ClerkProvider>
+    </>
   )
 }

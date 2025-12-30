@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Konva from 'konva';
 import { Layer, Line, Circle, Stage, Text, Rect } from 'react-konva';
 import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment } from '@/lib/types/building-geometry';
 import { validateSimplePolygon } from '@/lib/geometry/polygon';
+import { dist, segmentExists, pointToSegmentDistance } from '@/lib/canvas-utils';
 
 type Mode = 'PAN' | 'DRAW' | 'CALIBRATE' | 'EDIT';
 
@@ -21,10 +22,8 @@ type Props = {
 
 const GRID_SIZE = 25;
 const SNAP_DIST = 10;
-
-function dist(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
+const CLOSE_SNAP_DIST = SNAP_DIST;
+const HIT_DIST = 10;
 
 function snapAngle(from: { x: number; y: number }, to: { x: number; y: number }) {
   const dx = to.x - from.x;
@@ -65,6 +64,8 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
   const [vertices, setVertices] = useState<BuildingVertex[]>(initialGeometry?.vertices ?? []);
   const [segments, setSegments] = useState<BuildingWallSegment[]>(initialGeometry?.segments ?? []);
   const [scaleFtPerUnit, setScaleFtPerUnit] = useState<number | null>(initialScaleFtPerUnit ?? null);
+  const [ringVertexIds, setRingVertexIds] = useState<string[] | undefined>(initialGeometry?.ringVertexIds);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
 
   // History for undo (simple snapshot)
   const [history, setHistory] = useState<Array<{ vertices: BuildingVertex[]; segments: BuildingWallSegment[] }>>([]);
@@ -77,6 +78,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
   const [showMeasurements, setShowMeasurements] = useState(true);
   const [drawByMeasurement, setDrawByMeasurement] = useState(false);
   const [pendingLengthFt, setPendingLengthFt] = useState<string>('');
+  const [editLengthFt, setEditLengthFt] = useState<string>('');
 
   const pushHistory = useCallback((next: { vertices: BuildingVertex[]; segments: BuildingWallSegment[] }) => {
     setHistory((h) => [...h.slice(-50), { vertices: next.vertices, segments: next.segments }]);
@@ -256,6 +258,23 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
     setPointerPos(p);
   };
 
+  const handleCanvasClickSelect = (world: { x: number; y: number }) => {
+    if (mode === 'DRAW') return; // don't select while drawing
+
+    let best: { id: string; d: number } | null = null;
+
+    for (const s of segments) {
+      const a = vertexById.get(s.a);
+      const b = vertexById.get(s.b);
+      if (!a || !b) continue;
+
+      const d = pointToSegmentDistance(world, a, b);
+      if (d <= HIT_DIST && (!best || d < best.d)) best = { id: s.id, d };
+    }
+
+    setSelectedSegmentId(best ? best.id : null);
+  };
+
   const handleStageClick = (e: any) => {
     // Ignore clicks on shapes in edit mode
     if (e.target && e.target !== e.target.getStage()) {
@@ -264,6 +283,12 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
 
     const p = worldPointer(e);
     if (!p) return;
+
+    // Handle segment selection in EDIT mode
+    if (mode === 'EDIT') {
+      handleCanvasClickSelect(p);
+      return;
+    }
 
     if (mode === 'DRAW') {
       if (!drawByMeasurement || vertices.length === 0) {
@@ -290,7 +315,11 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
         const d = Math.hypot(dx, dy);
         if (d <= 0) return;
 
-        const lenUnits = lenFt / scaleFtPerUnit;
+        // scaleFtPerUnit is "feet per canvas unit"
+        // To convert: units = feet / (feet/unit)
+        const ftPerUnit = scaleFtPerUnit;
+        const lenUnits = lenFt / ftPerUnit;
+        
         const nextP = { x: prev.x + (dx / d) * lenUnits, y: prev.y + (dy / d) * lenUnits };
         addVertex(nextP);
       }
@@ -328,23 +357,61 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
 
   const vertexMap = useMemo(() => new Map(vertices.map((v) => [v.id, v])), [vertices]);
 
+  const vertexById = useMemo(() => {
+    const map = new Map<string, BuildingVertex>();
+    for (const v of vertices) map.set(v.id, v);
+    return map;
+  }, [vertices]);
+
+  // Prefill edit length input when selection changes
+  useEffect(() => {
+    if (!selectedSegmentId || !scaleFtPerUnit) {
+      setEditLengthFt('');
+      return;
+    }
+
+    const seg = segments.find(s => s.id === selectedSegmentId);
+    if (!seg) {
+      setEditLengthFt('');
+      return;
+    }
+
+    const a = vertexMap.get(seg.a);
+    const b = vertexMap.get(seg.b);
+    if (!a || !b) {
+      setEditLengthFt('');
+      return;
+    }
+
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lenUnits = Math.hypot(dx, dy);
+    const lenFt = lenUnits * scaleFtPerUnit;
+
+    setEditLengthFt(Number.isFinite(lenFt) ? lenFt.toFixed(1) : '');
+  }, [selectedSegmentId, segments, vertexMap, scaleFtPerUnit]);
+
   const segmentLines = useMemo(() => {
     return segments.map((s) => {
       const a = vertexMap.get(s.a);
       const b = vertexMap.get(s.b);
       if (!a || !b) return null;
+      
+      const isSelected = s.id === selectedSegmentId;
+      
       return (
         <Line
           key={s.id}
           points={[a.x, a.y, b.x, b.y]}
-          stroke="#f87171"
-          strokeWidth={3}
+          stroke={isSelected ? "#fbbf24" : "#f87171"}
+          strokeWidth={isSelected ? 4 : 3}
           lineCap="round"
+          hitStrokeWidth={12}
           onDblClick={() => mode === 'EDIT' && deleteSegment(s.id)}
         />
       );
     });
-  }, [segments, vertexMap, mode]);
+  }, [segments, vertexMap, mode, selectedSegmentId]);
 
   const vertexDots = useMemo(() => {
     return vertices.map((v) => (
@@ -388,7 +455,6 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
 
   const segmentLabels = useMemo(() => {
     if (!showMeasurements) return [];
-    if (!scaleFtPerUnit) return [];
 
     return segments.map((s) => {
       const a = vertexMap.get(s.a);
@@ -396,9 +462,14 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
       if (!a || !b) return null;
 
       const lenUnits = dist(a, b);
-      const lenFt = lenUnits * scaleFtPerUnit;
       const m = midpoint(a, b);
-      const label = `${lenFt.toFixed(1)}'`;
+      
+      // Show feet if calibrated, pixels otherwise
+      let label = `${Math.round(lenUnits)} px`;
+      if (scaleFtPerUnit && scaleFtPerUnit > 0) {
+        const lenFt = lenUnits * scaleFtPerUnit;
+        label = `${lenFt.toFixed(1)} ft`;
+      }
 
       return (
         <Text
@@ -421,6 +492,80 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
     if (!b) return null;
     return <Line points={[a.x, a.y, b.x, b.y]} stroke="#fbbf24" strokeWidth={3} dash={[6, 4]} listening={false} />;
   }, [mode, calibration, pointerPos]);
+
+  const applySelectedSegmentLength = () => {
+    if (mode !== 'EDIT') return;
+    if (!selectedSegmentId) return;
+    if (!scaleFtPerUnit || scaleFtPerUnit <= 0) return;
+
+    const nextFt = parseFloat(editLengthFt);
+    if (!Number.isFinite(nextFt) || nextFt <= 0) return;
+
+    const seg = segments.find(s => s.id === selectedSegmentId);
+    if (!seg) return;
+
+    const a = vertexMap.get(seg.a);
+    const b = vertexMap.get(seg.b);
+    if (!a || !b) return;
+
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const currentLen = Math.hypot(dx, dy);
+    if (currentLen <= 0.0001) return;
+
+    // scaleFtPerUnit = "feet per canvas unit"
+    const targetLenUnits = nextFt / scaleFtPerUnit;
+
+    const ux = dx / currentLen;
+    const uy = dy / currentLen;
+
+    const newBx = a.x + ux * targetLenUnits;
+    const newBy = a.y + uy * targetLenUnits;
+
+    pushHistory({ vertices, segments });
+    const nextVertices = vertices.map(v => (v.id === seg.b ? { ...v, x: newBx, y: newBy } : v));
+    setVertices(nextVertices);
+    emitChange({ vertices: nextVertices });
+  };
+
+  const handleCloseLoop = () => {
+    if (vertices.length < 3) return;
+    if (ringVertexIds?.length) return;
+
+    const first = vertices[0];
+    const last = vertices[vertices.length - 1];
+
+    const aId = last.id;
+    const bId = first.id;
+
+    // Add closing segment if not already present
+    setSegments(prev => {
+      if (segmentExists(prev, aId, bId)) return prev;
+      return [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          a: aId,
+          b: bId,
+        },
+      ];
+    });
+
+    // Mark polygon closed (ordered ring of vertices)
+    const ring = vertices.map(v => v.id);
+    setRingVertexIds(ring);
+
+    // Exit drawing mode
+    setMode('EDIT');
+
+    // Emit changes
+    queueMicrotask(() => {
+      const updatedSegments = segmentExists(segments, aId, bId)
+        ? segments
+        : [...segments, { id: crypto.randomUUID(), a: aId, b: bId }];
+      emitChange({ vertices, segments: updatedSegments });
+    });
+  };
 
   const applyCalibration = () => {
     if (!calibration.a || !calibration.b) return;
@@ -458,6 +603,18 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
           >
             Calibrate
           </button>
+          
+          {mode === 'DRAW' && !ringVertexIds?.length && vertices.length >= 3 && (
+            <button
+              type="button"
+              onClick={handleCloseLoop}
+              className="px-3 py-1 text-xs rounded bg-green-600 hover:bg-green-700 text-white"
+              title="Close the wall loop by connecting the last point to the first"
+            >
+              Close Loop
+            </button>
+          )}
+          
           <button
             type="button"
             onClick={() => setShowGrid((g) => !g)}
@@ -533,6 +690,38 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
                 )}
                 <div className="text-xs text-slate-400">Tip: click to set direction; the segment will snap to 0/90/180/270 and use the entered length.</div>
               </>
+            )}
+          </div>
+        )}
+
+        {mode === 'EDIT' && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <div className="text-slate-300">Selected wall length (ft):</div>
+            <input
+              value={editLengthFt}
+              onChange={(e) => setEditLengthFt(e.target.value)}
+              className="w-32 px-3 py-1 bg-slate-900/50 border border-slate-600 rounded text-white"
+              placeholder="e.g. 10"
+              disabled={!selectedSegmentId || !scaleFtPerUnit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applySelectedSegmentLength();
+              }}
+            />
+            <button
+              type="button"
+              onClick={applySelectedSegmentLength}
+              disabled={!selectedSegmentId || !scaleFtPerUnit}
+              className="rounded px-3 py-1 border text-slate-100 disabled:opacity-50"
+              title={!scaleFtPerUnit ? 'Calibrate first' : !selectedSegmentId ? 'Select a wall segment' : 'Apply'}
+            >
+              Apply
+            </button>
+
+            {!scaleFtPerUnit && (
+              <div className="text-xs text-amber-300">Calibrate first to enable measured edits.</div>
+            )}
+            {!selectedSegmentId && (
+              <div className="text-xs text-slate-400">Click a wall segment to select it.</div>
             )}
           </div>
         )}

@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma';
 import { createEquipmentSchema } from '@/lib/validations/equipment';
+import { withAuth } from '@/lib/auth-middleware';
+import { apiSuccess, apiError } from '@/lib/api-response';
 
-export async function GET() {
+export const GET = withAuth(async (userId: string) => {
   try {
     const equipment = await prisma.equipment.findMany({
       include: {
@@ -14,17 +16,14 @@ export async function GET() {
       orderBy: { name: 'asc' },
     })
     
-    return NextResponse.json(equipment)
+    return apiSuccess(equipment)
   } catch (error) {
     console.error('Equipment fetch error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch equipment' },
-      { status: 500 }
-    )
+    return apiError('Failed to fetch equipment', 500)
   }
-}
+})
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (userId: string, request: Request) => {
   try {
     const body = await request.json()
     
@@ -37,10 +36,7 @@ export async function POST(request: Request) {
     })
     
     if (!building) {
-      return NextResponse.json(
-        { error: 'Shop building not found' },
-        { status: 404 }
-      )
+      return apiError('Shop building not found', 404)
     }
     
     // Create equipment
@@ -63,17 +59,19 @@ export async function POST(request: Request) {
       },
     })
     
-    return NextResponse.json(equipment, { status: 201 })
+    return apiSuccess(equipment, 201)
   } catch (error) {
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { 
+          success: false,
           error: 'Invalid input', 
           details: error.errors.map(e => ({
             field: e.path.join('.'),
             message: e.message
-          }))
+          })),
+          timestamp: new Date().toISOString()
         },
         { status: 400 }
       )
@@ -85,18 +83,12 @@ export async function POST(request: Request) {
       
       // Handle unique constraint violations
       if (error.message.includes('Unique constraint')) {
-        return NextResponse.json(
-          { error: 'Equipment with this name already exists' },
-          { status: 409 }
-        )
+        return apiError('Equipment with this name already exists', 409)
       }
     }
     
     // Generic error
     console.error('Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create equipment' },
-      { status: 500 }
-    )
+    return apiError('Failed to create equipment', 500)
   }
-}
+})

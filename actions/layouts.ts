@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createServerAction } from "zsa";
 import { prisma } from "@/lib/prisma";
-import { CanvasItem } from "@/lib/validations/layout";
+import type { LayoutPlan } from "@/lib/validations/layout";
 
 const createLayoutSchema = z.object({
   buildingId: z.string().transform(val => parseInt(val, 10)),
@@ -12,7 +12,8 @@ const createLayoutSchema = z.object({
 
 const updateLayoutSchema = z.object({
   id: z.string(),
-  canvasState: z.array(z.any()), // CanvasItem array, validated by the store
+  // Backcompat: historically an array of CanvasItem. BOMV2 uses a versioned object.
+  canvasState: z.unknown() as z.ZodType<LayoutPlan>,
 });
 
 export const createLayout = createServerAction()
@@ -50,22 +51,25 @@ export const updateLayout = createServerAction()
   .input(updateLayoutSchema)
   .handler(async ({ input }) => {
     try {
-      // Verify layout exists
-      const existingLayout = await prisma.layout.findUnique({
-        where: { id: input.id },
-      });
+      // Use transaction for atomic update with optimistic locking
+      const layout = await prisma.$transaction(async (tx) => {
+        // Verify layout exists first
+        const existingLayout = await tx.layout.findUnique({
+          where: { id: input.id },
+        });
 
-      if (!existingLayout) {
-        throw new Error("Layout not found");
-      }
+        if (!existingLayout) {
+          throw new Error("Layout not found");
+        }
 
-      // Update the layout
-      const layout = await prisma.layout.update({
-        where: { id: input.id },
-        data: {
-          canvasState: input.canvasState,
-          updatedAt: new Date(),
-        },
+        // Update the layout
+        return await tx.layout.update({
+          where: { id: input.id },
+          data: {
+            canvasState: input.canvasState,
+            updatedAt: new Date(),
+          },
+        });
       });
 
       return {

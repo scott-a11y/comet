@@ -8,6 +8,7 @@ import { updateLayout } from "@/actions/layouts";
 import { CanvasArea } from "./canvas-area";
 import { PropertiesPanel } from "./properties-panel";
 import { LibraryPanel } from "./library-panel";
+import { TakeoffPanel } from "./takeoff-panel";
 import Konva from "konva";
 
 interface EditorShellProps {
@@ -30,13 +31,18 @@ export function EditorShell({ initialLayout, buildingDims, pdfUrl }: EditorShell
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [blueprintOpacity, setBlueprintOpacity] = useState(0.5);
-  const { items, setItems, addItem, selectedId } = useLayoutStore();
+  const { items, setPlan, getPlan, selectedId } = useLayoutStore();
+  const [sidebarTab, setSidebarTab] = useState<"LIBRARY" | "PROPERTIES" | "TAKEOFF">("LIBRARY");
   const stageRef = useRef<Konva.Stage>(null);
 
   // Initialize the store with the initial layout data
   useEffect(() => {
-    setItems(initialLayout.canvasState || []);
-  }, [initialLayout.canvasState, setItems]);
+    setPlan(initialLayout.canvasState || []);
+  }, [initialLayout.canvasState, setPlan]);
+
+  useEffect(() => {
+    setSidebarTab(selectedId ? "PROPERTIES" : "LIBRARY");
+  }, [selectedId]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -44,7 +50,7 @@ export function EditorShell({ initialLayout, buildingDims, pdfUrl }: EditorShell
     try {
       const [result, error] = await updateLayout({
         id: initialLayout.id,
-        canvasState: items,
+        canvasState: getPlan(),
       });
 
       if (error) {
@@ -61,33 +67,7 @@ export function EditorShell({ initialLayout, buildingDims, pdfUrl }: EditorShell
     }
   };
 
-  const handleAddWall = () => {
-    const newWall = {
-      id: `wall-${Date.now()}`,
-      type: "WALL" as const,
-      x: Math.random() * 200,
-      y: Math.random() * 200,
-      rotation: 0,
-      width: 100,
-      length: 10,
-      metadata: { thickness: 8 },
-    };
-    addItem(newWall);
-  };
-
-  const handleAddMachine = () => {
-    const newMachine = {
-      id: `machine-${Date.now()}`,
-      type: "EQUIPMENT" as const,
-      x: Math.random() * 300,
-      y: Math.random() * 300,
-      rotation: 0,
-      width: 50,
-      length: 30,
-      metadata: { powerKw: 5, type: "SAW" },
-    };
-    addItem(newMachine);
-  };
+  // NOTE: add wall/equipment actions live in panels/tools; leaving these helpers removed for MVP clarity.
 
   const handleExport = () => {
     const stage = stageRef.current;
@@ -185,11 +165,32 @@ export function EditorShell({ initialLayout, buildingDims, pdfUrl }: EditorShell
       <div className="flex flex-1">
         {/* Sidebar */}
         <div className="w-64 bg-slate-800 border-r border-slate-700">
-          {selectedId ? (
-            <PropertiesPanel />
-          ) : (
-            <LibraryPanel />
-          )}
+          <div className="border-b border-slate-700 p-2 flex gap-2">
+            <button
+              className={`flex-1 px-2 py-1 text-xs rounded ${sidebarTab === "LIBRARY" ? "bg-slate-700 text-white" : "bg-slate-900/40 text-slate-300"}`}
+              onClick={() => setSidebarTab("LIBRARY")}
+            >
+              Library
+            </button>
+            <button
+              className={`flex-1 px-2 py-1 text-xs rounded ${sidebarTab === "PROPERTIES" ? "bg-slate-700 text-white" : "bg-slate-900/40 text-slate-300"}`}
+              onClick={() => setSidebarTab("PROPERTIES")}
+              disabled={!selectedId}
+              title={!selectedId ? "Select an item to edit properties" : undefined}
+            >
+              Properties
+            </button>
+            <button
+              className={`flex-1 px-2 py-1 text-xs rounded ${sidebarTab === "TAKEOFF" ? "bg-slate-700 text-white" : "bg-slate-900/40 text-slate-300"}`}
+              onClick={() => setSidebarTab("TAKEOFF")}
+            >
+              Takeoff
+            </button>
+          </div>
+
+          {sidebarTab === "LIBRARY" && <LibraryPanel />}
+          {sidebarTab === "PROPERTIES" && selectedId && <PropertiesPanel />}
+          {sidebarTab === "TAKEOFF" && <TakeoffPanel />}
         </div>
 
         {/* Main Canvas Area */}

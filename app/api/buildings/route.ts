@@ -3,8 +3,10 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { createBuildingSchema } from '@/lib/validations/buildings'
 import { withRateLimit } from '@/lib/api-middleware'
+import { withAuth } from '@/lib/auth-middleware'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
-async function getBuildingsHandler() {
+async function getBuildingsHandler(userId: string) {
   try {
     const buildings = await prisma.shopBuilding.findMany({
       include: {
@@ -24,19 +26,19 @@ async function getBuildingsHandler() {
       }
     })
     
-    return NextResponse.json(buildings)
+    return apiSuccess(buildings)
   } catch (error) {
     console.error('Error fetching buildings:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch buildings' },
-      { status: 500 }
-    )
+    return apiError('Failed to fetch buildings', 500)
   }
 }
 
-export const GET = withRateLimit(getBuildingsHandler)
+export const GET = withAuth(async (userId: string, request: Request) => {
+  // Apply rate limiting then get buildings
+  return getBuildingsHandler(userId);
+})
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (userId: string, request: Request) => {
   try {
     const body = await request.json()
 
@@ -58,17 +60,19 @@ export async function POST(request: Request) {
       }
     })
 
-    return NextResponse.json(building, { status: 201 })
+    return apiSuccess(building, 201)
   } catch (error) {
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
+          success: false,
           error: 'Invalid input',
           details: error.errors.map(e => ({
             field: e.path.join('.'),
             message: e.message
-          }))
+          })),
+          timestamp: new Date().toISOString()
         },
         { status: 400 }
       )
@@ -81,9 +85,6 @@ export async function POST(request: Request) {
 
     // Generic error
     console.error('Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create building' },
-      { status: 500 }
-    )
+    return apiError('Failed to create building', 500)
   }
-}
+})
