@@ -1,8 +1,39 @@
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
+
 // Simple in-memory rate limiter for development
 // Can be upgraded to Redis-based limiter for production
 const inMemoryStore = new Map<string, { count: number; resetTime: number }>()
 
-export function simpleRateLimit(identifier: string, limit = 10, windowMs = 10000) {
+export async function simpleRateLimit(identifier: string, limit = 10, windowMs = 10000) {
+  // Use Upstash if configured
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      const redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      })
+
+      const ratelimit = new Ratelimit({
+        redis: redis,
+        limiter: Ratelimit.slidingWindow(limit, `${windowMs} ms`),
+        analytics: true,
+      })
+
+      const { success, limit: l, remaining, reset } = await ratelimit.limit(identifier)
+
+      return {
+        success,
+        limit: l,
+        remaining,
+        reset
+      }
+    } catch (error) {
+      console.warn('Rate limiting failed, falling back to in-memory', error)
+      // Fallback to in-memory
+    }
+  }
+
   const now = Date.now()
   const key = identifier
 

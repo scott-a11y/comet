@@ -181,7 +181,12 @@ model DustRun {
   toUtilityId        Int?           @map("to_utility_id")
   diameterIn         Float          @map("diameter_in")
   lengthFt           Float          @map("length_ft")
+  
+  // Flow calculations
+  cfm                Float?         @default(0)
+  velocityFpm        Float?         @map("velocity_fpm")
   staticPressureLoss Float?         @map("static_pressure_loss_in_wg")
+
   layout             LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
   fromEquipment      Equipment?     @relation("DustRunFromEquipment", fields: [fromEquipmentId], references: [id])
   toEquipment        Equipment?     @relation("DustRunToEquipment", fields: [toEquipmentId], references: [id])
@@ -281,6 +286,9 @@ model EquipmentInstance {
   x        Float @default(0)
   y        Float @default(0)
   rotation Float @default(0)
+
+  // AI-extracted specifications
+  specs    Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -2,16 +2,17 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { createLayoutSchema } from '@/lib/validations/layouts'
+import { withRateLimit } from '@/lib/api-middleware'
 import { withAuth } from '@/lib/auth-middleware'
 import { apiSuccess, apiError } from '@/lib/api-response'
 
-export const GET = withAuth(async (userId: string, request: Request) => {
+export const GET = withRateLimit(withAuth(async (userId: string, request: Request) => {
   try {
     const { searchParams } = new URL(request.url)
     const buildingId = searchParams.get('buildingId')
-    
+
     const where = buildingId ? { shopBuildingId: parseInt(buildingId) } : {}
-    
+
     const layouts = await prisma.layoutInstance.findMany({
       where,
       include: {
@@ -33,15 +34,15 @@ export const GET = withAuth(async (userId: string, request: Request) => {
         createdAt: 'desc'
       }
     })
-    
+
     return apiSuccess(layouts)
   } catch (error) {
     console.error('Error fetching layouts:', error)
     return apiError('Failed to fetch layouts', 500)
   }
-})
+}))
 
-export const POST = withAuth(async (userId: string, request: Request) => {
+export const POST = withRateLimit(withAuth(async (userId: string, request: Request) => {
   try {
     const body = await request.json()
 
@@ -89,4 +90,4 @@ export const POST = withAuth(async (userId: string, request: Request) => {
     console.error('Unexpected error:', error)
     return apiError('Failed to create layout', 500)
   }
-})
+}))

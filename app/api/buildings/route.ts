@@ -25,7 +25,7 @@ async function getBuildingsHandler(userId: string) {
         createdAt: 'desc'
       }
     })
-    
+
     return apiSuccess(buildings)
   } catch (error) {
     console.error('Error fetching buildings:', error)
@@ -33,12 +33,12 @@ async function getBuildingsHandler(userId: string) {
   }
 }
 
-export const GET = withAuth(async (userId: string, request: Request) => {
+export const GET = withRateLimit(withAuth(async (userId: string, request: Request) => {
   // Apply rate limiting then get buildings
   return getBuildingsHandler(userId);
-})
+}))
 
-export const POST = withAuth(async (userId: string, request: Request) => {
+export const POST = withRateLimit(withAuth(async (userId: string, request: Request) => {
   try {
     const body = await request.json()
 
@@ -87,4 +87,4 @@ export const POST = withAuth(async (userId: string, request: Request) => {
     console.error('Unexpected error:', error)
     return apiError('Failed to create building', 500)
   }
-})
+}))

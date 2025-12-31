@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { simpleRateLimit } from './rate-limit'
 
-export function withRateLimit(handler: (req: NextRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest) => {
+export function withRateLimit<T extends any[]>(handler: (...args: T) => Promise<NextResponse>) {
+  return async (...args: T) => {
+    const req = args[0] as NextRequest
+
     // Get client IP for rate limiting
     const ip = req.headers.get('x-forwarded-for') ||
-               req.headers.get('x-real-ip') ||
-               'anonymous'
+      req.headers.get('x-real-ip') ||
+      'anonymous'
 
     // Apply rate limiting
-    const rateLimitResult = simpleRateLimit(`api:${ip}`, 20, 60000) // 20 requests per minute
+    const rateLimitResult = await simpleRateLimit(`api:${ip}`, 20, 60000) // 20 requests per minute
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
@@ -29,7 +31,7 @@ export function withRateLimit(handler: (req: NextRequest) => Promise<NextRespons
     }
 
     // Add rate limit headers to successful responses
-    const response = await handler(req)
+    const response = await handler(...args)
 
     if (rateLimitResult.remaining !== undefined) {
       response.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString())
