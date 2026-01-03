@@ -52,7 +52,7 @@ export const updateLayout = createServerAction()
   .handler(async ({ input }) => {
     try {
       // Use transaction for atomic update with optimistic locking
-      const layout = await prisma.$transaction(async (tx) => {
+      const layout = await prisma.$transaction(async (tx: any) => {
         // Verify layout exists first
         const existingLayout = await tx.layout.findUnique({
           where: { id: input.id },

@@ -11,36 +11,36 @@ describe('simpleRateLimit', () => {
     vi.useRealTimers()
   })
 
-  it('should allow requests within the limit', () => {
+  it('should allow requests within the limit', async () => {
     const identifier = 'test-user'
 
-    const result1 = simpleRateLimit(identifier, 2, 1000)
+    const result1 = await simpleRateLimit(identifier, 2, 1000)
     expect(result1.success).toBe(true)
     expect(result1.remaining).toBe(1)
 
-    const result2 = simpleRateLimit(identifier, 2, 1000)
+    const result2 = await simpleRateLimit(identifier, 2, 1000)
     expect(result2.success).toBe(true)
     expect(result2.remaining).toBe(0)
   })
 
-  it('should block requests over the limit', () => {
+  it('should block requests over the limit', async () => {
     const identifier = 'test-user'
 
-    simpleRateLimit(identifier, 1, 1000)
-    const result = simpleRateLimit(identifier, 1, 1000)
+    await simpleRateLimit(identifier, 1, 1000)
+    const result = await simpleRateLimit(identifier, 1, 1000)
 
     expect(result.success).toBe(false)
     expect(result.remaining).toBe(0)
     expect(result.reset).toBeDefined()
   })
 
-  it('should reset after the time window', () => {
+  it('should reset after the time window', async () => {
     const identifier = 'test-user-reset'
 
-    simpleRateLimit(identifier, 1, 100)
+    await simpleRateLimit(identifier, 1, 100)
     vi.advanceTimersByTime(150)
 
-    const result = simpleRateLimit(identifier, 1, 100)
+    const result = await simpleRateLimit(identifier, 1, 100)
     expect(result.success).toBe(true)
   })
 })

@@ -9,7 +9,7 @@ export const dynamicParams = true;
 
 async function getLayout(id: string, layoutId: string) {
   const layout = await prisma.layoutInstance.findUnique({
-    where: { 
+    where: {
       id: parseInt(layoutId),
       shopBuildingId: parseInt(id)
     },
@@ -27,7 +27,7 @@ async function getLayout(id: string, layoutId: string) {
       }
     }
   })
-  
+
   if (!layout) return null
   return layout
 }
@@ -45,7 +45,7 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
   }
 
   const layout = await getLayout(id, layoutId)
-  
+
   if (!layout) {
     notFound()
   }
@@ -75,15 +75,15 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
               {layout.equipmentPositions.length} machines placed
             </div>
           </div>
-          
+
           {/* Simple 2D Grid Canvas */}
           <div className="bg-slate-900 rounded-lg p-4 relative" style={{ minHeight: '600px' }}>
-            <div className="absolute inset-4 border-2 border-slate-700 rounded" style={{ 
+            <div className="absolute inset-4 border-2 border-slate-700 rounded" style={{
               backgroundImage: 'linear-gradient(rgba(71, 85, 105, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(71, 85, 105, 0.1) 1px, transparent 1px)',
               backgroundSize: '40px 40px'
             }}>
               {/* Grid overlay - each square = 5 feet */}
-              {layout.equipmentPositions.map((pos) => (
+              {layout.equipmentPositions.map((pos: typeof layout.equipmentPositions[0]) => (
                 <div
                   key={pos.id}
                   className="absolute bg-blue-600/30 border-2 border-blue-500 rounded p-2 cursor-move hover:bg-blue-600/50 transition-colors"
@@ -105,7 +105,7 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
               ))}
             </div>
           </div>
-          
+
           <div className="mt-4 text-sm text-slate-400">
             💡 Tip: Equipment positions are shown on a scaled grid. Future version will have drag & drop.
           </div>
@@ -118,13 +118,13 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
             <p className="text-slate-400">No equipment placed yet</p>
           ) : (
             <div className="space-y-3">
-              {layout.equipmentPositions.map((pos) => (
+              {layout.equipmentPositions.map((pos: typeof layout.equipmentPositions[0]) => (
                 <div key={pos.id} className="bg-slate-700/50 p-4 rounded-lg flex justify-between items-center">
                   <div>
                     <div className="font-semibold text-white">{pos.equipment.name}</div>
                     <div className="text-sm text-slate-400 mt-1">
-                      Position: ({pos.x}', {pos.y}') • 
-                      Size: {pos.equipment.widthFt}' × {pos.equipment.depthFt}' • 
+                      Position: ({pos.x}', {pos.y}') •
+                      Size: {pos.equipment.widthFt}' × {pos.equipment.depthFt}' •
                       Rotation: {pos.orientation}°
                     </div>
                     {pos.equipment.powerSpecs && (

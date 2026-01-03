@@ -15,7 +15,7 @@ async function handler() {
 
     return NextResponse.json({
       count: buildings.length,
-      ids: buildings.map((b) => b.id),
+      ids: buildings.map((b: { id: number }) => b.id),
       buildings,
     })
   } catch (error) {

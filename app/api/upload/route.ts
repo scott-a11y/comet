@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
         // Accept both PDFs and images
         const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
         const hasValidExtension = validExtensions.some(ext => pathname.toLowerCase().endsWith(ext));
-        
+
         if (!hasValidExtension) {
           throw new Error('Only PDF and image files (PNG, JPG, JPEG, WEBP) are allowed');
         }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log('Upload completed:', blob.url);
+        // Upload completed successfully - logged via middleware
       },
     });
 
