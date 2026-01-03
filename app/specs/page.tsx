@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { extractMachinerySpecs } from "@/actions/extract-specs";
 import { saveMachinerySpecs } from "@/actions/save-specs";
