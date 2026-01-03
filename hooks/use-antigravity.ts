@@ -62,10 +62,15 @@ export function useAntigravity<TData extends Record<string, any>, TResult>(
         startTransition(async () => {
             // Optimistically remove from UI
             const filtered = optimisticData.filter(item => item[keyProp] !== itemKey);
-            setOptimisticData(filtered[0]); // Trigger optimistic update
+            if (filtered.length > 0) {
+                setOptimisticData(filtered[0]); // Trigger optimistic update
+            }
 
-            // Sync with server
-            const result = await syncAction({ [keyProp]: itemKey, _deleted: true } as TData);
+            // Sync with server - create a partial object with just the key
+            const deletePayload = { [keyProp]: itemKey } as Partial<TData> & { _deleted?: boolean };
+            deletePayload._deleted = true;
+
+            const result = await syncAction(deletePayload as TData);
 
             if (!result.success) {
                 toast.error(result.error || "Delete failed");
