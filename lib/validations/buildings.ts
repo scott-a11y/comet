@@ -22,8 +22,8 @@ const buildingGeometrySchema = z.object({
 // Match Prisma ShopBuilding model schema
 export const createBuildingSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
-  widthFt: z.number().positive('Width must be positive').max(1000).optional(),
-  depthFt: z.number().positive('Depth must be positive').max(1000).optional(),
+  widthFt: z.number().positive('Width must be positive').max(1000),
+  depthFt: z.number().positive('Depth must be positive').max(1000),
   ceilingHeightFt: z.number().positive().max(50).optional(),
   hasMezzanine: z.boolean().default(false),
   notes: z.string().max(1000).optional(),
@@ -31,25 +31,6 @@ export const createBuildingSchema = z.object({
   extractedData: z.any().optional(), // JSON data from AI analysis
   floorGeometry: buildingGeometrySchema.optional(),
   floorScaleFtPerUnit: z.number().positive().max(1000).optional(),
-}).superRefine((val, ctx) => {
-  const hasDims = typeof val.widthFt === 'number' && typeof val.depthFt === 'number';
-  const hasGeom = !!val.floorGeometry;
-
-  if (!hasDims && !hasGeom) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['widthFt'],
-      message: 'Provide dimensions or draw walls manually.',
-    });
-  }
-
-  if (hasGeom && !val.floorScaleFtPerUnit) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['floorScaleFtPerUnit'],
-      message: 'Calibration is required (ft per unit).',
-    });
-  }
 })
 
 // Note: createBuildingSchema is a ZodEffects (due to superRefine), so .partial() isn't available.

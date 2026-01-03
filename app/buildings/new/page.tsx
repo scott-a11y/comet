@@ -56,13 +56,12 @@ export default function NewBuildingPage() {
       const depthFt = formData.length ? parseFloat(formData.length) : undefined;
       const ceilingHeightFt = formData.height ? parseFloat(formData.height) : undefined;
 
-      const hasDims = typeof widthFt === 'number' && !Number.isNaN(widthFt)
-        && typeof depthFt === 'number' && !Number.isNaN(depthFt);
-      const hasGeom = !!floorGeometry;
-
-      if (!hasDims && !hasGeom) {
-        throw new Error('Please provide dimensions, or draw walls manually.');
+      // Basic validation - width and length are required
+      if (!widthFt || !depthFt || isNaN(widthFt) || isNaN(depthFt)) {
+        throw new Error('Please provide width and length for the building.');
       }
+
+      const hasGeom = !!floorGeometry;
 
       if (hasGeom) {
         if (floorValidationError) {
@@ -75,9 +74,9 @@ export default function NewBuildingPage() {
 
       const requestData = {
         name: formData.name,
-        widthFt: hasDims ? widthFt : undefined,
-        depthFt: hasDims ? depthFt : undefined,
-        ceilingHeightFt: ceilingHeightFt,
+        widthFt,
+        depthFt,
+        ceilingHeightFt,
         pdfUrl: pdfUrl || undefined,
         extractedData: extractedData || undefined,
         floorGeometry: floorGeometry || undefined,
@@ -285,12 +284,13 @@ export default function NewBuildingPage() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label htmlFor="width" className="block text-sm font-medium text-slate-300 mb-2">
-                  Width (ft)
+                  Width (ft) *
                 </label>
                 <input
                   type="number"
                   id="width"
                   name="width"
+                  required
                   min="1"
                   step="0.1"
                   value={formData.width}
@@ -302,12 +302,13 @@ export default function NewBuildingPage() {
 
               <div>
                 <label htmlFor="length" className="block text-sm font-medium text-slate-300 mb-2">
-                  Length (ft)
+                  Length (ft) *
                 </label>
                 <input
                   type="number"
                   id="length"
                   name="length"
+                  required
                   min="1"
                   step="0.1"
                   value={formData.length}
@@ -336,7 +337,7 @@ export default function NewBuildingPage() {
             </div>
 
             <div className="text-xs text-slate-500">
-              Tip: You can either enter Width/Length/Height, or enable manual drawing and calibrate the floor outline.
+              Width and Length are required. Height is optional. Manual drawing is optional for advanced floor plans.
             </div>
 
             <div className="flex gap-4 pt-4">
