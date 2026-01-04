@@ -81,8 +81,8 @@ export function DustCollectionCalculator() {
     });
 
     // Calculate main trunk requirements
-    const sortedByC FM = [...machines].sort((a, b) => b.cfm - a.cfm);
-    const topMachines = sortedByC FM.slice(0, simultaneousMachines);
+    const sortedByCFM = [...machines].sort((a, b) => b.cfm - a.cfm);
+    const topMachines = sortedByCFM.slice(0, simultaneousMachines);
     const totalSimultaneousCFM = topMachines.reduce((sum, m) => sum + m.cfm, 0);
 
     const mainDiameter = totalSimultaneousCFM > 0
