@@ -150,10 +150,33 @@ model LayoutInstance {
   dustRuns           DustRun[]
   airRuns            AirRun[]
   circuits           ElectricalCircuit[]
+  systemRuns         SystemRun[]
 
   @@index([shopBuildingId])
   @@index([createdAt])
   @@map("layout_instances")
+}
+
+// Unified system run model for auto-generated systems
+model SystemRun {
+  id              Int            @id @default(autoincrement())
+  layoutId        Int            @map("layout_id")
+  systemType      String         @map("system_type") // 'DUST' | 'AIR' | 'ELECTRICAL'
+  fromEquipmentId Int?           @map("from_equipment_id")
+  toUtilityId     Int?           @map("to_utility_id")
+  pathData        Json           @map("path_data") // Array of {x, y} points
+  diameter        Float?         // For DUST and AIR systems (inches)
+  wireSize        String?        @map("wire_size") // For ELECTRICAL systems
+  calculations    Json           // Store all calculation results
+  metadata        Json?          // Additional metadata
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  
+  layout          LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  
+  @@index([layoutId])
+  @@index([systemType])
+  @@map("system_runs")
 }
 
 model EquipmentLayoutPosition {
