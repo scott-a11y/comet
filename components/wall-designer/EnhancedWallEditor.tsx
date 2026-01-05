@@ -162,22 +162,45 @@ export function EnhancedWallEditor() {
                 setIsDrawing(true);
                 setDrawStart(finalPoint);
             } else {
-                // Complete wall
+                // Complete wall - show length input dialog
                 if (drawStart) {
-                    // Calculate length in feet (12 pixels = 1 foot)
+                    // Calculate current length in feet (12 pixels = 1 foot)
                     const dx = finalPoint.x - drawStart.x;
                     const dy = finalPoint.y - drawStart.y;
                     const lengthInPixels = Math.sqrt(dx * dx + dy * dy);
-                    const lengthInFeet = lengthInPixels / 12;
+                    const calculatedLength = Math.round((lengthInPixels / 12) * 10) / 10;
+
+                    // Prompt for exact length
+                    const userLength = window.prompt(
+                        `Wall length (calculated: ${calculatedLength}').\nEnter exact length in feet:`,
+                        String(calculatedLength)
+                    );
+
+                    if (userLength === null) {
+                        // User cancelled - don't create wall
+                        setIsDrawing(false);
+                        setDrawStart(null);
+                        return;
+                    }
+
+                    const targetLength = parseFloat(userLength) || calculatedLength;
+
+                    // Adjust endpoint to match exact length
+                    const angle = Math.atan2(dy, dx);
+                    const targetPixels = targetLength * 12;
+                    const adjustedEnd = {
+                        x: drawStart.x + Math.cos(angle) * targetPixels,
+                        y: drawStart.y + Math.sin(angle) * targetPixels
+                    };
 
                     const newWall: Wall = {
                         id: `wall-${Date.now()}`,
                         x1: drawStart.x,
                         y1: drawStart.y,
-                        x2: finalPoint.x,
-                        y2: finalPoint.y,
+                        x2: adjustedEnd.x,
+                        y2: adjustedEnd.y,
                         thickness: wallThickness,
-                        length: Math.round(lengthInFeet * 10) / 10 // Round to 1 decimal
+                        length: targetLength
                     };
                     setWalls([...walls, newWall]);
 
@@ -535,7 +558,7 @@ export function EnhancedWallEditor() {
                                         <Text
                                             x={midX}
                                             y={midY}
-                                            text={`${wall.length}'`}
+                                            text={String(wall.length || 0) + "'"}
                                             fontSize={12 / scale}
                                             fill="#22c55e"
                                             align="center"
