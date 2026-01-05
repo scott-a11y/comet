@@ -16,6 +16,8 @@ interface Wall {
     y1: number;
     x2: number;
     y2: number;
+    thickness: number; // inches
+    length?: number; // feet (calculated or user-specified)
 }
 
 interface Equipment {
@@ -59,10 +61,37 @@ export function EnhancedWallEditor() {
     const [showSnapSettings, setShowSnapSettings] = useState(false);
     const [showLayers, setShowLayers] = useState(true);
     const [fullscreen, setFullscreen] = useState(false);
+    const [windowDimensions, setWindowDimensions] = useState({ width: 1200, height: 800 });
+
+    // Wall settings
+    const [wallThickness, setWallThickness] = useState(6); // inches
+    const [showMeasurements, setShowMeasurements] = useState(true);
+    const [measurementInput, setMeasurementInput] = useState('');
+    const [showMeasurementDialog, setShowMeasurementDialog] = useState(false);
 
     // History
     const [history, setHistory] = useState<any[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
+
+    // Set window dimensions on mount
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setWindowDimensions({
+                width: window.innerWidth,
+                height: window.innerHeight
+            });
+
+            const handleResize = () => {
+                setWindowDimensions({
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                });
+            };
+
+            window.addEventListener('resize', handleResize);
+            return () => window.removeEventListener('resize', handleResize);
+        }
+    }, []);
 
     /**
      * Handle mouse move - update snap point
@@ -135,12 +164,20 @@ export function EnhancedWallEditor() {
             } else {
                 // Complete wall
                 if (drawStart) {
+                    // Calculate length in feet (12 pixels = 1 foot)
+                    const dx = finalPoint.x - drawStart.x;
+                    const dy = finalPoint.y - drawStart.y;
+                    const lengthInPixels = Math.sqrt(dx * dx + dy * dy);
+                    const lengthInFeet = lengthInPixels / 12;
+
                     const newWall: Wall = {
                         id: `wall-${Date.now()}`,
                         x1: drawStart.x,
                         y1: drawStart.y,
                         x2: finalPoint.x,
-                        y2: finalPoint.y
+                        y2: finalPoint.y,
+                        thickness: wallThickness,
+                        length: Math.round(lengthInFeet * 10) / 10 // Round to 1 decimal
                     };
                     setWalls([...walls, newWall]);
 
@@ -337,6 +374,32 @@ export function EnhancedWallEditor() {
                         layerManager={layerManager}
                         onLayerChange={() => { }}
                     />
+
+                    <div className="w-px h-6 bg-slate-600 mx-2" />
+
+                    {/* Wall Thickness Control */}
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-400">Wall Thickness:</label>
+                        <select
+                            value={wallThickness}
+                            onChange={(e) => setWallThickness(parseInt(e.target.value))}
+                            className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm"
+                        >
+                            <option value="4">4" (2x4)</option>
+                            <option value="6">6" (2x6)</option>
+                            <option value="8">8" (2x8)</option>
+                            <option value="12">12" (2x12)</option>
+                        </select>
+                    </div>
+
+                    {/* Show Measurements Toggle */}
+                    <button
+                        onClick={() => setShowMeasurements(!showMeasurements)}
+                        className={`px-3 py-1 rounded text-xs ${showMeasurements ? 'bg-green-600' : 'bg-slate-700'}`}
+                        title="Toggle Measurements"
+                    >
+                        {showMeasurements ? '📏 Measurements ON' : '📏 Measurements OFF'}
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -396,8 +459,8 @@ export function EnhancedWallEditor() {
             {/* Canvas */}
             <Stage
                 ref={stageRef}
-                width={window.innerWidth}
-                height={window.innerHeight - 48}
+                width={windowDimensions.width}
+                height={windowDimensions.height - 48}
                 scaleX={scale}
                 scaleY={scale}
                 x={position.x}
@@ -441,14 +504,48 @@ export function EnhancedWallEditor() {
                         const visible = wallLayer ? wallLayer.visible : true;
                         const opacity = wallLayer ? wallLayer.opacity : 1;
 
+                        // Calculate midpoint for measurement label
+                        const midX = (wall.x1 + wall.x2) / 2;
+                        const midY = (wall.y1 + wall.y2) / 2;
+
                         return visible ? (
-                            <Line
-                                key={wall.id}
-                                points={[wall.x1, wall.y1, wall.x2, wall.y2]}
-                                stroke={isSelected ? '#3b82f6' : '#94a3b8'}
-                                strokeWidth={isSelected ? 4 / scale : 2 / scale}
-                                opacity={opacity}
-                            />
+                            <Group key={wall.id}>
+                                {/* Main wall line */}
+                                <Line
+                                    points={[wall.x1, wall.y1, wall.x2, wall.y2]}
+                                    stroke={isSelected ? '#3b82f6' : '#94a3b8'}
+                                    strokeWidth={(wall.thickness / 2) / scale} // Show thickness
+                                    opacity={opacity}
+                                />
+
+                                {/* Measurement label */}
+                                {showMeasurements && wall.length && (
+                                    <Group>
+                                        {/* Background for text */}
+                                        <Rect
+                                            x={midX - 25 / scale}
+                                            y={midY - 12 / scale}
+                                            width={50 / scale}
+                                            height={20 / scale}
+                                            fill="#1e293b"
+                                            opacity={0.9}
+                                            cornerRadius={4 / scale}
+                                        />
+                                        {/* Length text */}
+                                        <Text
+                                            x={midX}
+                                            y={midY}
+                                            text={`${wall.length}'`}
+                                            fontSize={12 / scale}
+                                            fill="#22c55e"
+                                            align="center"
+                                            verticalAlign="middle"
+                                            offsetX={20 / scale}
+                                            offsetY={6 / scale}
+                                        />
+                                    </Group>
+                                )}
+                            </Group>
                         ) : null;
                     })}
 
