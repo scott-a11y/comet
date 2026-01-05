@@ -14,8 +14,8 @@ import {
     AlignVerticalJustifyStart,
     AlignVerticalJustifyCenter,
     AlignVerticalJustifyEnd,
-    DistributeHorizontal,
-    DistributeVertical,
+    ArrowLeftRight,
+    ArrowUpDown,
     Group,
     Ungroup
 } from 'lucide-react';
@@ -138,14 +138,14 @@ export function SelectionToolbar({
                                     onClick={() => onBulkOperation?.('distribute', 'horizontal')}
                                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm"
                                 >
-                                    <DistributeHorizontal size={14} />
+                                    <ArrowLeftRight size={14} />
                                     <span>Horizontal</span>
                                 </button>
                                 <button
                                     onClick={() => onBulkOperation?.('distribute', 'vertical')}
                                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm"
                                 >
-                                    <DistributeVertical size={14} />
+                                    <ArrowUpDown size={14} />
                                     <span>Vertical</span>
                                 </button>
                             </div>
