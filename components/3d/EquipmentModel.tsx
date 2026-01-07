@@ -1,15 +1,23 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { Text } from "@react-three/drei";
 import type { Equipment } from "@prisma/client";
 import * as THREE from "three";
 
 interface EquipmentModelProps {
     item: Equipment;
+    position?: [number, number, number];
+    isColliding?: boolean;
+    onBoundsUpdate?: (id: string, bounds: THREE.Box3) => void;
 }
 
-export function EquipmentModel({ item }: EquipmentModelProps) {
+export function EquipmentModel({
+    item,
+    position: externalPosition,
+    isColliding = false,
+    onBoundsUpdate
+}: EquipmentModelProps) {
     const { widthFt, depthFt, name, category, orientation = 0 } = item;
     const meshRef = useRef<THREE.Mesh>(null);
     const [hovered, setHovered] = useState(false);
@@ -24,8 +32,9 @@ export function EquipmentModel({ item }: EquipmentModelProps) {
         return 5;
     }, [category]);
 
-    // Color code based on category
+    // Color code based on category and collision state
     const color = useMemo(() => {
+        if (isColliding) return "#ef4444"; // Red for collision (highest priority)
         if (hovered) return "#fbbf24"; // Yellow when hovered
         if (category.toLowerCase().includes('cnc')) return "#fb923c"; // Orange
         if (category.toLowerCase().includes('saw')) return "#f87171"; // Red
@@ -33,19 +42,29 @@ export function EquipmentModel({ item }: EquipmentModelProps) {
         if (category.toLowerCase().includes('lathe')) return "#a78bfa"; // Purple
         if (category.toLowerCase().includes('mill')) return "#34d399"; // Green
         return "#38bdf8"; // Sky Blue
-    }, [category, hovered]);
+    }, [category, hovered, isColliding]);
 
     // Position from equipment data (if available)
-    // Note: Equipment doesn't have x/y - those come from EquipmentLayoutPosition
-    // For now, default to origin. Parent component should handle positioning.
+    // Use external position if provided, otherwise default
     const position: [number, number, number] = useMemo(() => {
+        if (externalPosition) {
+            return [externalPosition[0], externalPosition[1] + height / 2, externalPosition[2]];
+        }
         return [0, height / 2, 0];
-    }, [height]);
+    }, [externalPosition, height]);
 
     // Rotation from orientation
     const rotation: [number, number, number] = useMemo(() => {
         return [0, (orientation * Math.PI) / 180, 0];
     }, [orientation]);
+
+    // Report bounding box to parent for collision detection
+    useEffect(() => {
+        if (meshRef.current && onBoundsUpdate) {
+            const box = new THREE.Box3().setFromObject(meshRef.current);
+            onBoundsUpdate(item.id.toString(), box);
+        }
+    }, [position, widthFt, depthFt, height, orientation, item.id, onBoundsUpdate]);
 
     return (
         <group position={position} rotation={rotation}>
@@ -118,6 +137,14 @@ export function EquipmentModel({ item }: EquipmentModelProps) {
                 <edgesGeometry args={[new THREE.BoxGeometry(widthFt, 0.1, depthFt)]} />
                 <lineBasicMaterial color={hovered ? "#fbbf24" : "#64748b"} linewidth={2} />
             </lineSegments>
+
+            {/* Collision warning outline */}
+            {isColliding && (
+                <lineSegments position={[0, height / 2, 0]}>
+                    <edgesGeometry args={[new THREE.BoxGeometry(widthFt, height, depthFt)]} />
+                    <lineBasicMaterial color="#ef4444" linewidth={4} />
+                </lineSegments>
+            )}
         </group>
     );
 }
