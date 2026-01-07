@@ -8,10 +8,11 @@ import { CollisionValidator } from '@/lib/validations/collision';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const layoutId = parseInt(params.id);
+        const { id } = await params;
+        const layoutId = parseInt(id);
 
         if (isNaN(layoutId)) {
             return NextResponse.json(
@@ -73,10 +74,11 @@ export async function GET(
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const layoutId = parseInt(params.id);
+        const { id } = await params;
+        const layoutId = parseInt(id);
 
         if (isNaN(layoutId)) {
             return NextResponse.json(
