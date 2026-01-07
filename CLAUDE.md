@@ -132,3 +132,48 @@ When you discover a repeated mistake or new pattern:
 1. Add it to the relevant section
 2. Commit with message: "docs: update CLAUDE.md with [pattern]"
 3. This file compounds learnings over time
+
+---
+
+## Shared Learnings (Cross-Project)
+
+This section contains knowledge that applies across ALL projects. Keep this synchronized.
+
+### Turbopack Symlink Issues
+**Problem:** Turbopack (Next.js 15+) doesn't handle symlinks well in worktrees  
+**Solution:** Downgrade Next.js from 16 to 14, rename config from `next.config.ts` to `next.config.mjs`
+
+**Commands:**
+```bash
+npm install next@14 react@18 react-dom@18
+mv next.config.ts next.config.mjs
+# Convert TypeScript config to JavaScript format
+```
+
+### Worktree Best Practices
+- **Always use `-b` flag** when creating worktrees: `git worktree add -b feature/name ../path`
+- **Clean up stale branches** before creating new worktrees: `git branch -D old-branch`
+- **Keep worktrees in parallel directory structure** (not nested)
+- **Remove worktrees properly**: `git worktree remove path` then `git branch -D branch-name`
+
+### Multi-Agent Workflow
+- **Universal workflows** (`.agent/workflows/`) stay identical across projects:
+  - `feature_start.md` - Feature initialization checklist
+  - `preflight.md` - Pre-commit validation
+  - `deploy_preview.md` - Deployment workflow
+- **CLAUDE.md is project-specific** and contains this shared learnings section
+- **Use Antigravity prompts** for manager coordination across parallel sessions
+- **Parallel Claude sessions** for independent feature slices (UI, API, Tests)
+
+### Development Workflow
+1. Check `.agent/workflows/feature_start.md` before starting any feature
+2. Run `.agent/workflows/preflight.md` checks before creating PR
+3. Follow `.agent/workflows/deploy_preview.md` for deployments
+4. Update shared learnings when discovering new patterns
+
+### When You Learn Something New
+If you discover a pattern, gotcha, or solution that applies to multiple projects:
+1. Add it to this "Shared Learnings" section
+2. Commit with message: "docs: add shared learning about [topic]"
+3. **Manually sync this section** to other projects (Comet, HD75, etc.)
+4. Keep the shared learnings identical across all CLAUDE.md files
