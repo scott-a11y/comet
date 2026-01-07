@@ -145,6 +145,13 @@ model LayoutInstance {
   name               String
   createdAt          DateTime                  @default(now()) @map("created_at")
   updatedAt          DateTime                  @updatedAt @map("updated_at")
+  
+  // Collision tracking
+  hasCollisions      Boolean                   @default(false) @map("has_collisions")
+  collisionCount     Int                       @default(0) @map("collision_count")
+  collisionData      Json?                     @map("collision_data")
+  lastCollisionCheck DateTime?                 @map("last_collision_check")
+  
   shopBuilding       ShopBuilding              @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
   equipmentPositions EquipmentLayoutPosition[]
   dustRuns           DustRun[]
@@ -154,6 +161,7 @@ model LayoutInstance {
 
   @@index([shopBuildingId])
   @@index([createdAt])
+  @@index([hasCollisions])
   @@map("layout_instances")
 }
 
