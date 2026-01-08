@@ -1,6 +1,7 @@
-import { defineConfig } from "@trigger.dev/sdk";
+// import { defineConfig } from "@trigger.dev/sdk";
 
-export default defineConfig({
+// Temporary fix for TypeScript - defineConfig may not be exported in this version
+export default {
   project: "proj_pdxruug",
   runtime: "node",
   logLevel: "log",
@@ -15,4 +16,4 @@ export default defineConfig({
       randomize: true,
     },
   },
-});
+} as const;

@@ -11,10 +11,8 @@ export async function createLayoutFromAnalysis(
     // 1. Create the layout record
     const layout = await prisma.layoutInstance.create({
         data: {
-            buildingId,
+            shopBuildingId: buildingId,
             name: `AI Generated - ${new Date().toLocaleDateString()}`,
-            description: data.summary,
-            // Initialize with detected dimensions
         }
     });
 
@@ -34,16 +32,15 @@ export async function createLayoutFromAnalysis(
             if (match) {
                 // Calculate position based on normalized building coordinates
                 const x = detected.position.x * data.width;
-                const z = detected.position.y * data.length;
+                const y = detected.position.y * data.length;
 
-                await prisma.equipmentPosition.create({
+                await prisma.equipmentLayoutPosition.create({
                     data: {
                         layoutId: layout.id,
                         equipmentId: match.id,
-                        posX: x,
-                        posY: 0,
-                        posZ: z,
-                        rotation: 0
+                        x: x,
+                        y: y,
+                        orientation: 0
                     }
                 });
             }

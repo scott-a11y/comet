@@ -46,7 +46,7 @@ export const validateLayoutCollisions = createServerAction()
                 data: {
                     hasCollisions: result.hasCollisions,
                     collisionCount: result.collisionCount,
-                    collisionData: result.collisions,
+                    collisionData: result.collisions as any, // Prisma Json type
                     lastCollisionCheck: new Date()
                 }
             });
