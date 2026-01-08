@@ -62,11 +62,37 @@ export const startFloorPlanAnalysis = createServerAction()
       // Validate file type from URL
       const url = new URL(input.imageUrl);
       const pathname = url.pathname.toLowerCase();
-      const validExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
-      const isValidImage = validExtensions.some(ext => pathname.endsWith(ext));
+      const validImageExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
+      const validPdfExtensions = ['.pdf'];
+      const isValidImage = validImageExtensions.some(ext => pathname.endsWith(ext));
+      const isValidPdf = validPdfExtensions.some(ext => pathname.endsWith(ext));
 
-      if (!isValidImage) {
-        throw new Error('Please upload an image file (PNG, JPG, JPEG, WEBP). PDF conversion is not yet supported on serverless platforms.');
+      if (!isValidImage && !isValidPdf) {
+        throw new Error('Please upload an image file (PNG, JPG, JPEG, WEBP) or PDF.');
+      }
+
+      let imageUrlToAnalyze = input.imageUrl;
+
+      // If it's a PDF, convert it to an image first
+      if (isValidPdf) {
+        console.log('[Floor Plan Analysis] PDF detected, converting to image...');
+
+        try {
+          // Fetch the PDF
+          const pdfResponse = await fetch(input.imageUrl);
+          const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
+
+          // Convert to image
+          const { convertPdfToImage } = await import('@/lib/pdf');
+          const imageDataUrl = await convertPdfToImage(pdfBuffer);
+
+          // Use the data URL directly (GPT-4o supports data URLs)
+          imageUrlToAnalyze = imageDataUrl;
+          console.log('[Floor Plan Analysis] PDF converted to image successfully');
+        } catch (conversionError) {
+          console.error('[Floor Plan Analysis] PDF conversion failed:', conversionError);
+          throw new Error('Failed to convert PDF to image. Please try uploading as PNG/JPG instead.');
+        }
       }
 
       console.log('[Floor Plan Analysis] Calling OpenAI Vision API...');
@@ -95,7 +121,7 @@ If dimensions are clearly marked in the image, use those exact values. Otherwise
               {
                 type: "image_url",
                 image_url: {
-                  url: input.imageUrl,
+                  url: imageUrlToAnalyze,
                   detail: "high"
                 }
               }
