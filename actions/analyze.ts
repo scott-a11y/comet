@@ -77,7 +77,17 @@ export const startFloorPlanAnalysis = createServerAction()
         messages: [
           {
             role: "system",
-            content: "Analyze this floor plan image and extract dimensions. If dimensions are clearly marked in the image, use those exact values. Otherwise, estimate based on typical building sizes. Return JSON with: width (number in feet), length (number in feet), height (optional number in feet), summary (string describing the floor plan)."
+            content: `Analyze this floor plan image and extract dimensions and equipment locations.
+Return JSON with the following structure:
+- width: number (feet)
+- length: number (feet)
+- height: number (optional, feet)
+- summary: string description
+- detectedEquipment: list of machines found (type, x, y coordinates normalized 0-1)
+- detectedPorts: list of utility connection points found (type: 'electrical', 'dust', 'pneumatic', and normalized x, y coordinates)
+
+Be precise with machine identities: look for table saws, CNC machines, planers, jointers, and workbenches.
+If dimensions are clearly marked in the image, use those exact values. Otherwise, estimate based on typical industrial standards.`
           },
           {
             role: "user",
