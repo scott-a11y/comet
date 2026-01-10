@@ -12,11 +12,29 @@ export type BuildingWallSegment = {
   material?: 'brick' | 'concrete' | 'drywall';
 };
 
+export type BuildingOpening = {
+  id: string;
+  segmentId: string;
+  type: 'door' | 'window';
+  position: number; // 0.0 to 1.0 along the segment from a to b
+  width: number; // in feet
+};
+
+export type ElectricalEntry = {
+  id: string;
+  x: number;
+  y: number;
+  type: 'single-phase' | 'three-phase';
+  voltage: number; // e.g. 120, 240, 480
+  amps: number; // e.g. 100, 200, 400
+};
+
 export type BuildingFloorGeometry = {
   version: 1;
   vertices: BuildingVertex[];
   segments: BuildingWallSegment[];
-  // Optional cached polygon ring (closed) derived from segments, in vertex id order
+  openings?: BuildingOpening[];
+  electricalEntries?: ElectricalEntry[];
   // Optional cached polygon ring (closed) derived from segments, in vertex id order
   ringVertexIds?: string[];
   equipment?: Array<{

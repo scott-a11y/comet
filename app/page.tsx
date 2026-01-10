@@ -97,29 +97,60 @@ export default function Home() {
             </div>
           )}
 
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-            <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+            <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700 hover:border-blue-500 transition-colors">
               <div className="text-blue-400 text-4xl mb-3">🏭</div>
               <h3 className="text-white font-semibold text-lg mb-2">Buildings & Zones</h3>
-              <p className="text-slate-400 text-sm">
+              <p className="text-slate-400 text-sm mb-4">
                 Define your shop layout with warehouse, office, and yard zones
               </p>
+              <Link href="/buildings" className="text-blue-400 hover:text-blue-300 text-sm font-medium">
+                View Buildings →
+              </Link>
             </div>
-            
-            <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
+
+            <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700 hover:border-blue-500 transition-colors">
               <div className="text-blue-400 text-4xl mb-3">⚡</div>
               <h3 className="text-white font-semibold text-lg mb-2">Equipment & Power</h3>
-              <p className="text-slate-400 text-sm">
+              <p className="text-slate-400 text-sm mb-4">
                 Track machines with electrical specs, dust collection, and compressed air requirements
               </p>
+              <Link href="/equipment" className="text-blue-400 hover:text-blue-300 text-sm font-medium">
+                Manage Equipment →
+              </Link>
             </div>
-            
-            <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700">
+
+            <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700 hover:border-blue-500 transition-colors">
               <div className="text-blue-400 text-4xl mb-3">📐</div>
               <h3 className="text-white font-semibold text-lg mb-2">Layout Design</h3>
-              <p className="text-slate-400 text-sm">
+              <p className="text-slate-400 text-sm mb-4">
                 Create multiple layout scenarios with drag-and-drop equipment placement
               </p>
+              <Link href="/buildings" className="text-blue-400 hover:text-blue-300 text-sm font-medium">
+                Design Layouts →
+              </Link>
+            </div>
+
+            <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700 hover:border-green-500 transition-colors">
+              <div className="text-green-400 text-4xl mb-3">🍝</div>
+              <h3 className="text-white font-semibold text-lg mb-2">Lean Analysis</h3>
+              <p className="text-slate-400 text-sm mb-4">
+                Spaghetti diagrams with quantified metrics - 22% cycle time reduction potential
+              </p>
+              <Link href="/lean-analysis" className="text-green-400 hover:text-green-300 text-sm font-medium">
+                Analyze Workflow →
+              </Link>
+            </div>
+
+            <div className="bg-slate-800/50 p-6 rounded-lg border border-slate-700 hover:border-amber-500 transition-colors">
+              <div className="text-amber-400 text-4xl mb-3">📊</div>
+              <h3 className="text-white font-semibold text-lg mb-2">KPI Dashboard</h3>
+              <p className="text-slate-400 text-sm mb-4">
+                Real-time OEE, cycle time vs takt time, throughput, and quality metrics
+              </p>
+              <Link href="/kpi-dashboard" className="text-amber-400 hover:text-amber-300 text-sm font-medium">
+                View Dashboard →
+              </Link>
             </div>
           </div>
         </div>

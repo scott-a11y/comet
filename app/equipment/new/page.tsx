@@ -41,13 +41,16 @@ export default function NewEquipmentPage() {
     // Fetch buildings for the dropdown
     fetch('/api/buildings')
       .then(res => res.json())
-      .then(data => {
-        setBuildings(data)
+      .then(result => {
+        // API returns {success: true, data: buildings}
+        const buildingsData = result.success ? result.data : []
+        setBuildings(Array.isArray(buildingsData) ? buildingsData : [])
         setIsLoadingBuildings(false)
       })
       .catch(err => {
         console.error('Failed to fetch buildings:', err)
         toast.error('Failed to load buildings')
+        setBuildings([]) // Ensure it's always an array
         setIsLoadingBuildings(false)
       })
   }, [])

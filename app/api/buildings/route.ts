@@ -47,18 +47,15 @@ export const POST = withRateLimit(async (request: Request) => {
     // Validate input with Zod
     const validated = createBuildingSchema.parse(body)
 
-    // Create building
+    // Create building with only fields that exist in database
     const building = await prisma.shopBuilding.create({
       data: {
-        ...validated,
-        // Prisma expects null for optional DB columns when explicitly omitted
+        name: validated.name,
         widthFt: validated.widthFt ?? null,
         depthFt: validated.depthFt ?? null,
         ceilingHeightFt: validated.ceilingHeightFt ?? null,
-        pdfUrl: validated.pdfUrl ?? null,
-        extractedData: validated.extractedData ?? null,
-        floorGeometry: (validated as any).floorGeometry ?? null,
-        floorScaleFtPerUnit: (validated as any).floorScaleFtPerUnit ?? null,
+        // Note: pdfUrl, extractedData, floorGeometry, floorScaleFtPerUnit
+        // are temporarily skipped until database migration is run
       }
     })
 

@@ -7,8 +7,14 @@ import { apiError } from './api-response';
  * @returns User ID if authenticated, throws error response otherwise
  */
 export async function requireAuth() {
+  // Development mode: bypass auth if Clerk is not configured
+  if (process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    console.log('[DEV MODE] Bypassing authentication - using mock user ID');
+    return 'dev-user-123';
+  }
+
   const { userId } = await auth();
-  
+
   if (!userId) {
     throw new Response(
       JSON.stringify({
@@ -19,7 +25,7 @@ export async function requireAuth() {
       { status: 401, headers: { 'Content-Type': 'application/json' } }
     );
   }
-  
+
   return userId;
 }
 

@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
+import LayoutOptimizer from '@/components/layout/LayoutOptimizer'
+import InteractiveLayoutCanvas from '@/components/layout/InteractiveLayoutCanvas'
+import MaterialFlowPathEditor from '@/components/layout/MaterialFlowPathEditor'
 
 // Force dynamic rendering for Vercel
 export const dynamic = 'force-dynamic';
@@ -14,7 +17,17 @@ async function getLayout(id: string, layoutId: string) {
       shopBuildingId: parseInt(id)
     },
     include: {
-      shopBuilding: true,
+      shopBuilding: {
+        include: {
+          equipment: true, // Include equipment to check if optimization is possible
+          entryPoints: {
+            orderBy: [
+              { isPrimary: 'desc' },
+              { createdAt: 'asc' },
+            ],
+          },
+        },
+      },
       equipmentPositions: {
         include: {
           equipment: {
@@ -24,7 +37,10 @@ async function getLayout(id: string, layoutId: string) {
             }
           }
         }
-      }
+      },
+      materialFlowPaths: {
+        orderBy: { createdAt: 'asc' },
+      },
     }
   })
 
@@ -68,47 +84,31 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* AI Layout Optimizer */}
+        <div className="mb-6">
+          <LayoutOptimizer
+            buildingId={id}
+            layoutId={layoutId}
+            hasEquipment={layout.shopBuilding.equipment && layout.shopBuilding.equipment.length > 0}
+          />
+        </div>
+
+        {/* Interactive Layout Canvas */}
         <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-          <div className="mb-4 flex justify-between items-center">
-            <h2 className="text-2xl font-semibold text-white">Layout Canvas</h2>
-            <div className="text-sm text-slate-400">
-              {layout.equipmentPositions.length} machines placed
-            </div>
+          <div className="mb-4">
+            <h2 className="text-2xl font-semibold text-white mb-2">Interactive Layout Canvas</h2>
+            <p className="text-sm text-slate-400">
+              Drag equipment to reposition • Click to select • Use "Edit Position" for precise measurements
+            </p>
           </div>
 
-          {/* Simple 2D Grid Canvas */}
-          <div className="bg-slate-900 rounded-lg p-4 relative" style={{ minHeight: '600px' }}>
-            <div className="absolute inset-4 border-2 border-slate-700 rounded" style={{
-              backgroundImage: 'linear-gradient(rgba(71, 85, 105, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(71, 85, 105, 0.1) 1px, transparent 1px)',
-              backgroundSize: '40px 40px'
-            }}>
-              {/* Grid overlay - each square = 5 feet */}
-              {layout.equipmentPositions.map((pos: typeof layout.equipmentPositions[0]) => (
-                <div
-                  key={pos.id}
-                  className="absolute bg-blue-600/30 border-2 border-blue-500 rounded p-2 cursor-move hover:bg-blue-600/50 transition-colors"
-                  style={{
-                    left: `${(pos.x / (layout.shopBuilding.widthFt || 1)) * 100}%`,
-                    top: `${(pos.y / (layout.shopBuilding.depthFt || 1)) * 100}%`,
-                    width: `${(pos.equipment.widthFt / (layout.shopBuilding.widthFt || 1)) * 100}%`,
-                    height: `${(pos.equipment.depthFt / (layout.shopBuilding.depthFt || 1)) * 100}%`,
-                    transform: `rotate(${pos.orientation}deg)`
-                  }}
-                >
-                  <div className="text-white text-xs font-semibold truncate">
-                    {pos.equipment.name}
-                  </div>
-                  <div className="text-slate-300 text-xs mt-1">
-                    {pos.equipment.widthFt}' × {pos.equipment.depthFt}'
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 text-sm text-slate-400">
-            💡 Tip: Equipment positions are shown on a scaled grid. Future version will have drag & drop.
-          </div>
+          <InteractiveLayoutCanvas
+            buildingId={id}
+            layoutId={layoutId}
+            buildingWidth={layout.shopBuilding.widthFt || 50}
+            buildingHeight={layout.shopBuilding.depthFt || 40}
+            equipmentPositions={layout.equipmentPositions as any}
+          />
         </div>
 
         {/* Equipment List */}
@@ -140,6 +140,27 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Material Flow Path Editor */}
+        <div className="mt-8 bg-slate-800 rounded-lg p-6 border border-slate-700">
+          <MaterialFlowPathEditor
+            layoutId={parseInt(layoutId)}
+            buildingWidth={layout.shopBuilding.widthFt || 100}
+            buildingDepth={layout.shopBuilding.depthFt || 100}
+            entryPoints={layout.shopBuilding.entryPoints || []}
+            materialFlowPaths={layout.materialFlowPaths || []}
+            equipmentPositions={layout.equipmentPositions.map((pos: any) => ({
+              id: pos.id,
+              x: pos.x,
+              y: pos.y,
+              equipment: {
+                name: pos.equipment.name,
+                widthFt: pos.equipment.widthFt,
+                depthFt: pos.equipment.depthFt,
+              },
+            }))}
+          />
         </div>
       </div>
     </div>

@@ -30,6 +30,7 @@ model ShopBuilding {
   equipment           Equipment[]
   layouts             LayoutInstance[]
   designerLayouts     Layout[]
+  entryPoints         EntryPoint[]
 
   @@index([name])
   @@index([createdAt])
@@ -158,6 +159,7 @@ model LayoutInstance {
   airRuns            AirRun[]
   circuits           ElectricalCircuit[]
   systemRuns         SystemRun[]
+  materialFlowPaths  MaterialFlowPath[]
 
   @@index([shopBuildingId])
   @@index([createdAt])
@@ -318,6 +320,7 @@ model EquipmentInstance {
   y        Float @default(0)
   rotation Float @default(0)
 
+
   // AI-extracted specifications
   specs    Json?
 
@@ -326,3 +329,125 @@ model EquipmentInstance {
 
   @@index([layoutId])
 }
+
+// SOP (Standard Operating Procedures) Management
+model SOP {
+  id          String    @id @default(cuid())
+  title       String
+  category    String    // e.g., "Safety", "Quality", "Maintenance"
+  version     String    @default("1.0")
+  status      String    @default("draft") // draft, active, archived
+  description String?   @db.Text
+  tags        String[]  @default([])
+  
+  // Metadata
+  createdBy   String?
+  approvedBy  String?
+  approvedAt  DateTime?
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  steps       SOPStep[]
+  
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sops")
+}
+
+model SOPStep {
+  id              String   @id @default(cuid())
+  sopId           String   @map("sop_id")
+  stepNumber      Int      @map("step_number")
+  title           String
+  instructions    String   @db.Text
+  photoUrl        String?  @map("photo_url")
+  estimatedMinutes Float?  @map("estimated_minutes")
+  safetyNotes     String?  @db.Text @map("safety_notes")
+  
+  sop             SOP      @relation(fields: [sopId], references: [id], onDelete: Cascade)
+  
+  @@unique([sopId, stepNumber])
+  @@index([sopId])
+  @@map("sop_steps")
+}
+
+// Quality Tracking System
+model DefectLog {
+  id              String   @id @default(cuid())
+  defectType      String   @map("defect_type")
+  severity        String   // low, medium, high, critical
+  description     String   @db.Text
+  location        String?
+  productLine     String?  @map("product_line")
+  
+  // Root cause analysis
+  rootCause       String?  @db.Text @map("root_cause")
+  correctiveAction String? @db.Text @map("corrective_action")
+  
+  // Status tracking
+  status          String   @default("open") // open, investigating, resolved, closed
+  resolvedAt      DateTime? @map("resolved_at")
+  
+  // Metadata
+  reportedBy      String?  @map("reported_by")
+  assignedTo      String?  @map("assigned_to")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  @@index([defectType])
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+  @@map("defect_logs")
+}
+
+// Entry Points (Doors, Loading Docks, etc.)
+model EntryPoint {
+  id             Int          @id @default(autoincrement())
+  shopBuildingId Int          @map("shop_building_id")
+  name           String
+  type           String       // 'door', 'loading_dock', 'overhead_door', 'emergency_exit'
+  x              Float
+  y              Float
+  widthFt        Float        @default(3) @map("width_ft")
+  direction      String?      // 'north', 'south', 'east', 'west'
+  isPrimary      Boolean      @default(false) @map("is_primary")
+  notes          String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  
+  shopBuilding   ShopBuilding @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
+  flowPathsFrom  MaterialFlowPath[] @relation("FlowPathFrom")
+  flowPathsTo    MaterialFlowPath[] @relation("FlowPathTo")
+  
+  @@index([shopBuildingId])
+  @@index([type])
+  @@map("entry_points")
+}
+
+// Material Flow Paths
+model MaterialFlowPath {
+  id               Int            @id @default(autoincrement())
+  layoutId         Int            @map("layout_id")
+  name             String
+  fromEntryPointId Int?           @map("from_entry_point_id")
+  toEntryPointId   Int?           @map("to_entry_point_id")
+  pathType         String         // 'receiving', 'processing', 'shipping', 'waste'
+  pathData         Json           @map("path_data") // Array of {x, y} points
+  color            String         @default("#3b82f6")
+  notes            String?        @db.Text
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  
+  layout           LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  fromEntryPoint   EntryPoint?    @relation("FlowPathFrom", fields: [fromEntryPointId], references: [id])
+  toEntryPoint     EntryPoint?    @relation("FlowPathTo", fields: [toEntryPointId], references: [id])
+  
+  @@index([layoutId])
+  @@index([pathType])
+  @@map("material_flow_paths")
+}
+

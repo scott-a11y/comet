@@ -97,7 +97,8 @@ export default function NewBuildingPage() {
         throw new Error(data.error || 'Failed to create building');
       }
 
-      const building = await response.json();
+      const result = await response.json();
+      const building = result.data;
       router.push(`/buildings/${building.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { CreateLayoutButton } from "./create-layout-button";
+import EntryPointManager from "@/components/building/EntryPointManager";
 
 // Force dynamic rendering for Vercel
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,12 @@ export default async function BuildingPage({ params }: BuildingPageProps) {
           equipmentInstances: true,
         },
         orderBy: { createdAt: "desc" },
+      },
+      entryPoints: {
+        orderBy: [
+          { isPrimary: 'desc' },
+          { createdAt: 'asc' },
+        ],
       },
     },
   });
@@ -218,6 +225,18 @@ export default async function BuildingPage({ params }: BuildingPageProps) {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Entry Points & Material Flow Section */}
+        <div className="mt-8">
+          <div className="bg-slate-800/50 rounded-lg border border-slate-700 p-6">
+            <EntryPointManager
+              buildingId={building.id}
+              buildingWidth={building.widthFt || 100}
+              buildingDepth={building.depthFt || 100}
+              entryPoints={building.entryPoints}
+            />
           </div>
         </div>
       </div>
