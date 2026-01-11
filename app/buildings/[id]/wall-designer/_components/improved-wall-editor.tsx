@@ -104,6 +104,10 @@ export function ImprovedWallEditor({
     const [componentRotation, setComponentRotation] = useState(0);
     const [showComponentBrowser, setShowComponentBrowser] = useState(false);
 
+    // Panel visibility state
+    const [showScalePanel, setShowScalePanel] = useState(true);
+    const [showLayerPanel, setShowLayerPanel] = useState(true);
+
     // Layer visibility state
     const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>({
         walls: true,
@@ -893,192 +897,201 @@ export function ImprovedWallEditor({
     }, [vertices, segments, openings, electricalEntries, systemRuns, components, layerVisibility, scaleFtPerUnit, onChange]);
 
     return (
-        <div ref={containerRef} className="relative w-full h-full bg-slate-900">
-            return (
-            <div ref={containerRef} className="relative w-full h-full bg-slate-900 overflow-hidden">
-                {/* Toolbar Docking Container */}
-                <div className={`absolute z-20 transition-all duration-500 ease-in-out ${toolbarDock === 'top-left' ? 'top-4 left-4 w-auto' :
-                    toolbarDock === 'top-center' ? 'top-4 left-1/2 -translate-x-1/2 w-max max-w-[95vw]' :
-                        toolbarDock === 'bottom-center' ? 'bottom-4 left-1/2 -translate-x-1/2 w-max max-w-[95vw]' :
-                            'top-4 left-4 bottom-4 w-72'
+        <div ref={containerRef} className="relative w-full h-full bg-slate-900 overflow-hidden">
+            {/* Toolbar Docking Container */}
+            <div className={`absolute z-20 transition-all duration-500 ease-in-out ${toolbarDock === 'top-left' ? 'top-4 left-4 w-auto' :
+                toolbarDock === 'top-center' ? 'top-4 left-1/2 -translate-x-1/2 w-max max-w-[95vw]' :
+                    toolbarDock === 'bottom-center' ? 'bottom-4 left-1/2 -translate-x-1/2 w-max max-w-[95vw]' :
+                        'top-4 left-4 bottom-4 w-72'
+                }`}>
+                <div className={`bg-slate-800/95 backdrop-blur-md rounded-xl border border-slate-700 p-4 shadow-2xl flex ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-row items-start gap-8' : 'flex-col gap-4'
                     }`}>
-                    <div className={`bg-slate-800/95 backdrop-blur-md rounded-xl border border-slate-700 p-4 shadow-2xl flex ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-row items-start gap-8' : 'flex-col gap-4'
-                        }`}>
-                        {/* Header with Dock Toggle */}
-                        <div className={`flex items-center justify-between ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-col items-start gap-1 h-full' : 'mb-1'}`}>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Architect</span>
-                                <span className="text-[8px] text-slate-500 font-medium">v1.2 // Wall Designer</span>
-                            </div>
+                    {/* Header with Dock Toggle */}
+                    <div className={`flex items-center justify-between ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-col items-start gap-1 h-full' : 'mb-1'}`}>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Architect</span>
+                            <span className="text-[8px] text-slate-500 font-medium">v1.2 // Wall Designer</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const positions: Array<typeof toolbarDock> = ['top-left', 'top-center', 'bottom-center', 'left-bar'];
+                                const next = positions[(positions.indexOf(toolbarDock) + 1) % positions.length];
+                                setToolbarDock(next);
+                            }}
+                            className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-500 hover:text-white transition-all transform hover:rotate-90"
+                            title="Move Toolbar"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Tools Group */}
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Design Tools</label>
+                        <div className="flex gap-2 flex-wrap">
+                            <button
+                                type="button"
+                                onClick={() => setMode('DRAW')}
+                                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'DRAW' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                            >
+                                ✏️ DRAW
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMode('EDIT')}
+                                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'EDIT' ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                            >
+                                🔧 EDIT
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMode('SELECT')}
+                                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'SELECT' ? 'bg-violet-600 border-violet-400 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                            >
+                                🖱️ SELECT
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMode('PAN')}
+                                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'PAN' ? 'bg-slate-600 border-slate-400 text-white shadow-[0_0_15px_rgba(71,85,105,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                            >
+                                ✋ PAN
+                            </button>
+                        </div>
+                        <div className="flex gap-2 mt-1">
+                            <button
+                                type="button"
+                                onClick={() => setMode('DOOR')}
+                                className={`flex-1 py-1.5 rounded font-bold text-[10px] border transition-all ${mode === 'DOOR' ? 'bg-orange-600 border-orange-400 text-white shadow-[0_0_10px_rgba(234,88,12,0.3)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                            >
+                                🚪 DOOR
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMode('WINDOW')}
+                                className={`flex-1 py-1.5 rounded font-bold text-[10px] border transition-all ${mode === 'WINDOW' ? 'bg-sky-600 border-sky-400 text-white shadow-[0_0_10px_rgba(2,132,199,0.3)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                            >
+                                🪟 WINDOW
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Systems Group */}
+                    <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Systems</label>
+                        <div className="flex gap-2 min-w-[140px]">
+                            <button
+                                type="button"
+                                onClick={() => setMode('POWER')}
+                                className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${mode === 'POWER' ? 'bg-amber-600 border-amber-400 text-white shadow-[0_0_15px_rgba(217,119,6,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                            >
+                                ⚡ POWER
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => {
-                                    const positions: Array<typeof toolbarDock> = ['top-left', 'top-center', 'bottom-center', 'left-bar'];
-                                    const next = positions[(positions.indexOf(toolbarDock) + 1) % positions.length];
-                                    setToolbarDock(next);
+                                    setMode('ELECTRIC_RUN');
+                                    setActiveRunPoints([]);
                                 }}
-                                className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-500 hover:text-white transition-all transform hover:rotate-90"
-                                title="Move Toolbar"
+                                className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${mode === 'ELECTRIC_RUN' ? 'bg-yellow-600 border-yellow-400 text-white shadow-[0_0_15px_rgba(202,138,4,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-                                </svg>
+                                🔌 RUN
                             </button>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowComponentBrowser(!showComponentBrowser)}
+                            className={`w-full py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${showComponentBrowser ? 'bg-green-600 border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                        >
+                            📦 COMPONENTS
+                        </button>
+                    </div>
 
-                        {/* Tools Group */}
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Design Tools</label>
-                            <div className="flex gap-2 flex-wrap">
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('DRAW')}
-                                    className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'DRAW' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                                >
-                                    ✏️ DRAW
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('EDIT')}
-                                    className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'EDIT' ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                                >
-                                    🔧 EDIT
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('SELECT')}
-                                    className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'SELECT' ? 'bg-violet-600 border-violet-400 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                                >
-                                    🖱️ SELECT
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('PAN')}
-                                    className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'PAN' ? 'bg-slate-600 border-slate-400 text-white shadow-[0_0_15px_rgba(71,85,105,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                                >
-                                    ✋ PAN
-                                </button>
-                            </div>
-                            <div className="flex gap-2 mt-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('DOOR')}
-                                    className={`flex-1 py-1.5 rounded font-bold text-[10px] border transition-all ${mode === 'DOOR' ? 'bg-orange-600 border-orange-400 text-white shadow-[0_0_10px_rgba(234,88,12,0.3)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                                >
-                                    🚪 DOOR
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('WINDOW')}
-                                    className={`flex-1 py-1.5 rounded font-bold text-[10px] border transition-all ${mode === 'WINDOW' ? 'bg-sky-600 border-sky-400 text-white shadow-[0_0_10px_rgba(2,132,199,0.3)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                                >
-                                    🪟 WINDOW
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Systems Group */}
-                        <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
-                            <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Systems</label>
-                            <div className="flex gap-2 min-w-[140px]">
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('POWER')}
-                                    className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${mode === 'POWER' ? 'bg-amber-600 border-amber-400 text-white shadow-[0_0_15px_rgba(217,119,6,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                                >
-                                    ⚡ POWER
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMode('ELECTRIC_RUN');
-                                        setActiveRunPoints([]);
-                                    }}
-                                    className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${mode === 'ELECTRIC_RUN' ? 'bg-yellow-600 border-yellow-400 text-white shadow-[0_0_15px_rgba(202,138,4,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                                >
-                                    🔌 RUN
-                                </button>
-                            </div>
+                    {/* Actions Group */}
+                    <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Actions</label>
+                        <div className="flex gap-2 flex-wrap">
                             <button
                                 type="button"
-                                onClick={() => setShowComponentBrowser(!showComponentBrowser)}
-                                className={`w-full py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${showComponentBrowser ? 'bg-green-600 border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                onClick={() => setShowQuickDimension(true)}
+                                className="px-3 py-1.5 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-50 text-[11px] font-bold rounded-lg transition-all border border-emerald-500/30 whitespace-nowrap"
                             >
-                                📦 COMPONENTS
+                                📐 RECTANGLE
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCloseLoop}
+                                disabled={vertices.length < 3}
+                                className="px-3 py-1.5 bg-purple-700/80 hover:bg-purple-600 text-purple-50 text-[11px] font-bold rounded-lg transition-all border border-purple-500/30 disabled:opacity-30 whitespace-nowrap"
+                            >
+                                🔗 CLOSE LOOP
                             </button>
                         </div>
-
-                        {/* Actions Group */}
-                        <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
-                            <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Actions</label>
-                            <div className="flex gap-2 flex-wrap">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowQuickDimension(true)}
-                                    className="px-3 py-1.5 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-50 text-[11px] font-bold rounded-lg transition-all border border-emerald-500/30 whitespace-nowrap"
-                                >
-                                    📐 RECTANGLE
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleCloseLoop}
-                                    disabled={vertices.length < 3}
-                                    className="px-3 py-1.5 bg-purple-700/80 hover:bg-purple-600 text-purple-50 text-[11px] font-bold rounded-lg transition-all border border-purple-500/30 disabled:opacity-30 whitespace-nowrap"
-                                >
-                                    🔗 CLOSE LOOP
-                                </button>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={handleUndo} disabled={history.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↩</button>
-                                <button onClick={handleRedo} disabled={redoStack.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↪</button>
-                                <button onClick={handleClear} className="flex-1 p-1.5 bg-red-900/40 hover:bg-red-700 text-red-100 rounded-md transition-all font-bold">🗑</button>
-                            </div>
+                        <div className="flex gap-2">
+                            <button onClick={handleUndo} disabled={history.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↩</button>
+                            <button onClick={handleRedo} disabled={redoStack.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↪</button>
+                            <button onClick={handleClear} className="flex-1 p-1.5 bg-red-900/40 hover:bg-red-700 text-red-100 rounded-md transition-all font-bold">🗑</button>
                         </div>
+                    </div>
 
-                        {/* Defaults Group */}
-                        <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : 'border-t border-slate-700 pt-3'}`}>
-                            <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Settings</label>
-                            <div className={`flex gap-4 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-row items-center' : 'flex-col'}`}>
-                                <div className="flex gap-2">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-[8px] text-slate-500 uppercase font-bold">Wall Thickness</span>
-                                        <input
-                                            type="number"
-                                            value={wallThickness}
-                                            onChange={(e) => setWallThickness(e.target.value)}
-                                            className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] font-mono"
-                                            step="0.1"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-[8px] text-slate-500 uppercase font-bold">Type</span>
-                                        <select
-                                            value={wallMaterial}
-                                            onChange={(e) => setWallMaterial(e.target.value as any)}
-                                            className="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px]"
-                                        >
-                                            <option value="drywall">Drywall</option>
-                                            <option value="brick">Brick</option>
-                                            <option value="concrete">Concrete</option>
-                                        </select>
-                                    </div>
+                    {/* Defaults Group */}
+                    <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : 'border-t border-slate-700 pt-3'}`}>
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Settings</label>
+                        <div className={`flex gap-4 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-row items-center' : 'flex-col'}`}>
+                            <div className="flex gap-2">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[8px] text-slate-500 uppercase font-bold">Wall Thickness</span>
+                                    <input
+                                        type="number"
+                                        value={wallThickness}
+                                        onChange={(e) => setWallThickness(e.target.value)}
+                                        className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] font-mono"
+                                        step="0.1"
+                                    />
                                 </div>
-                                <div className="flex gap-4">
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
-                                        <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">GRID</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <input type="checkbox" checked={snapToGridEnabled} onChange={e => setSnapToGridEnabled(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
-                                        <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">SNAP</span>
-                                    </label>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[8px] text-slate-500 uppercase font-bold">Type</span>
+                                    <select
+                                        value={wallMaterial}
+                                        onChange={(e) => setWallMaterial(e.target.value as any)}
+                                        className="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px]"
+                                    >
+                                        <option value="drywall">Drywall</option>
+                                        <option value="brick">Brick</option>
+                                        <option value="concrete">Concrete</option>
+                                    </select>
                                 </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
+                                    <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">GRID</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input type="checkbox" checked={snapToGridEnabled} onChange={e => setSnapToGridEnabled(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
+                                    <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">SNAP</span>
+                                </label>
+                            </div>
+                            <div className="flex gap-4 mt-2">
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input type="checkbox" checked={showScalePanel} onChange={e => setShowScalePanel(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
+                                    <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">SCALE</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input type="checkbox" checked={showLayerPanel} onChange={e => setShowLayerPanel(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
+                                    <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">LAYERS</span>
+                                </label>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Scale indicator */}
+            {/* Scale indicator */}
+            {showScalePanel && (
                 <div className="absolute top-4 right-4 z-10 bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 p-3 shadow-xl">
                     <div className="text-sm text-slate-300 mb-2">
                         <strong>Scale:</strong> {scaleFtPerUnit ? `${(1 / scaleFtPerUnit).toFixed(1)} px/ft` : 'Not set'}
@@ -1094,99 +1107,101 @@ export function ImprovedWallEditor({
                         Zoom: {(scale * 100).toFixed(0)}%
                     </div>
                 </div>
+            )}
 
-                {/* Component Browser */}
-                {showComponentBrowser && (
-                    <div className="absolute top-4 right-80 z-20 w-80 bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                        <div className="p-3 border-b border-slate-700 flex justify-between items-center">
-                            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Component Library</h3>
+            {/* Component Browser */}
+            {showComponentBrowser && (
+                <div className="absolute top-4 right-80 z-20 w-80 bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                    <div className="p-3 border-b border-slate-700 flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Component Library</h3>
+                        <button
+                            type="button"
+                            onClick={() => setShowComponentBrowser(false)}
+                            className="text-slate-500 hover:text-white"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    {/* Category Tabs */}
+                    <div className="flex gap-1 p-2 border-b border-slate-700 overflow-x-auto">
+                        {(['furniture', 'cabinet', 'machinery', 'equipment', 'storage'] as ComponentCategory[]).map(cat => (
                             <button
+                                key={cat}
                                 type="button"
-                                onClick={() => setShowComponentBrowser(false)}
-                                className="text-slate-500 hover:text-white"
+                                onClick={() => {
+                                    // Scroll to category or filter
+                                }}
+                                className="px-3 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors whitespace-nowrap capitalize"
                             >
-                                ✕
+                                {cat}
                             </button>
-                        </div>
+                        ))}
+                    </div>
 
-                        {/* Category Tabs */}
-                        <div className="flex gap-1 p-2 border-b border-slate-700 overflow-x-auto">
-                            {(['furniture', 'cabinet', 'machinery', 'equipment', 'storage'] as ComponentCategory[]).map(cat => (
-                                <button
-                                    key={cat}
-                                    type="button"
-                                    onClick={() => {
-                                        // Scroll to category or filter
-                                    }}
-                                    className="px-3 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors whitespace-nowrap capitalize"
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Component List */}
-                        <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                            {Object.entries(COMPONENT_CATALOG).map(([category, templates]) => (
-                                <div key={category}>
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 capitalize">{category}</h4>
-                                    <div className="space-y-2">
-                                        {templates.map((template, idx) => (
-                                            <button
-                                                key={idx}
-                                                type="button"
-                                                onClick={() => {
-                                                    setComponentToPlace(template);
-                                                    setMode('COMPONENT');
-                                                    setComponentRotation(0);
-                                                }}
-                                                className={`w-full p-3 rounded-lg border transition-all text-left ${componentToPlace?.name === template.name
-                                                    ? 'bg-blue-900/50 border-blue-500 shadow-lg'
-                                                    : 'bg-slate-900/50 border-slate-700 hover:border-slate-500 hover:bg-slate-900'
-                                                    }`}
-                                            >
-                                                <div className="flex items-start gap-3">
-                                                    <div
-                                                        className="w-12 h-12 rounded flex-shrink-0"
-                                                        style={{ backgroundColor: template.color || '#6b7280' }}
-                                                    />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="font-bold text-sm text-white">{template.name}</div>
-                                                        <div className="text-xs text-slate-400 mt-1">
-                                                            {template.width}' × {template.depth}'
-                                                            {template.height && ` × ${template.height}'`}
-                                                        </div>
-                                                        {template.metadata?.powerRequirement && (
-                                                            <div className="text-xs text-amber-400 mt-1 flex items-center gap-1">
-                                                                <span>⚡</span>
-                                                                {template.metadata.powerRequirement}
-                                                            </div>
-                                                        )}
+                    {/* Component List */}
+                    <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                        {Object.entries(COMPONENT_CATALOG).map(([category, templates]) => (
+                            <div key={category}>
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 capitalize">{category}</h4>
+                                <div className="space-y-2">
+                                    {templates.map((template, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => {
+                                                setComponentToPlace(template);
+                                                setMode('COMPONENT');
+                                                setComponentRotation(0);
+                                            }}
+                                            className={`w-full p-3 rounded-lg border transition-all text-left ${componentToPlace?.name === template.name
+                                                ? 'bg-blue-900/50 border-blue-500 shadow-lg'
+                                                : 'bg-slate-900/50 border-slate-700 hover:border-slate-500 hover:bg-slate-900'
+                                                }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                    className="w-12 h-12 rounded flex-shrink-0"
+                                                    style={{ backgroundColor: template.color || '#6b7280' }}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-bold text-sm text-white">{template.name}</div>
+                                                    <div className="text-xs text-slate-400 mt-1">
+                                                        {template.width}' × {template.depth}'
+                                                        {template.height && ` × ${template.height}'`}
                                                     </div>
+                                                    {template.metadata?.powerRequirement && (
+                                                        <div className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                                                            <span>⚡</span>
+                                                            {template.metadata.powerRequirement}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Instructions */}
-                        {componentToPlace && (
-                            <div className="p-3 border-t border-slate-700 bg-slate-900/50">
-                                <div className="text-xs text-slate-400">
-                                    <div className="font-bold text-blue-400 mb-1">Selected: {componentToPlace.name}</div>
-                                    <div>• Click on canvas to place</div>
-                                    <div>• Press <kbd className="px-1 py-0.5 bg-slate-700 rounded text-[10px]">R</kbd> to rotate</div>
-                                    <div>• Rotation: {componentRotation}°</div>
+                                            </div>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                        )}
+                        ))}
                     </div>
-                )}
 
-                {/* Layer Management Panel */}
-                <div className="absolute top-4 right-4 z-10 w-64 bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 shadow-xl">
+                    {/* Instructions */}
+                    {componentToPlace && (
+                        <div className="p-3 border-t border-slate-700 bg-slate-900/50">
+                            <div className="text-xs text-slate-400">
+                                <div className="font-bold text-blue-400 mb-1">Selected: {componentToPlace.name}</div>
+                                <div>• Click on canvas to place</div>
+                                <div>• Press <kbd className="px-1 py-0.5 bg-slate-700 rounded text-[10px]">R</kbd> to rotate</div>
+                                <div>• Rotation: {componentRotation}°</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Layer Management Panel */}
+            {showLayerPanel && (
+                <div className="absolute top-32 right-4 z-10 w-64 bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 shadow-xl">
                     <div className="p-3 border-b border-slate-700">
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Layers</h3>
                     </div>
@@ -1252,863 +1267,865 @@ export function ImprovedWallEditor({
                         </div>
                     </div>
                 </div>
+            )}
 
-                {/* Stats */}
-                <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
-                    <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 p-3 shadow-xl text-sm text-slate-300">
-                        <div><strong>Vertices:</strong> {vertices.length}</div>
-                        <div><strong>Walls:</strong> {segments.length}</div>
-                        <div><strong>Openings:</strong> {openings.length}</div>
-                        <div><strong>Power Entries:</strong> {electricalEntries.length}</div>
-                        <div><strong>Components:</strong> {components.length}</div>
-                        {mode === 'DRAW' && (
-                            <div className="mt-2 text-xs text-slate-400">
-                                Click to add vertices. Click near existing vertex to connect.
-                            </div>
-                        )}
-                        {mode === 'ELECTRIC_RUN' && (
-                            <div className="mt-2 text-xs text-slate-400">
-                                Click to add points. Double-click or press Enter to finish run.
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Selected Wall Properties */}
-                    {selectedSegmentId && (
-                        <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-blue-500/50 p-4 shadow-xl text-sm w-64 animate-in slide-in-from-left duration-200">
-                            <div className="flex justify-between items-center mb-3">
-                                <h4 className="font-bold text-blue-400 uppercase tracking-wider text-xs">Selected Wall</h4>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedSegmentId(null)}
-                                    className="text-slate-500 hover:text-white"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Thickness (ft)</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="range"
-                                            min="0.1"
-                                            max="2"
-                                            step="0.05"
-                                            value={segments.find(s => s.id === selectedSegmentId)?.thickness || 0.5}
-                                            onChange={(e) => {
-                                                const val = parseFloat(e.target.value);
-                                                setSegments(prev => prev.map(s =>
-                                                    s.id === selectedSegmentId ? { ...s, thickness: val } : s
-                                                ));
-                                            }}
-                                            className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 mt-3"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={segments.find(s => s.id === selectedSegmentId)?.thickness || 0.5}
-                                            onChange={(e) => {
-                                                const val = parseFloat(e.target.value);
-                                                if (!isNaN(val)) {
-                                                    setSegments(prev => prev.map(s =>
-                                                        s.id === selectedSegmentId ? { ...s, thickness: val } : s
-                                                    ));
-                                                }
-                                            }}
-                                            className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Material</label>
-                                    <select
-                                        value={segments.find(s => s.id === selectedSegmentId)?.material || 'drywall'}
-                                        onChange={(e) => {
-                                            const val = e.target.value as any;
-                                            setSegments(prev => prev.map(s =>
-                                                s.id === selectedSegmentId ? { ...s, material: val } : s
-                                            ));
-                                        }}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
-                                    >
-                                        <option value="drywall">Drywall (Int)</option>
-                                        <option value="brick">Brick (Ext)</option>
-                                        <option value="concrete">Concrete</option>
-                                    </select>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        pushHistory();
-                                        setSegments(prev => prev.filter(s => s.id !== selectedSegmentId));
-                                        setSelectedSegmentId(null);
-                                    }}
-                                    className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors"
-                                >
-                                    Delete Wall
-                                </button>
-                            </div>
+            {/* Stats */}
+            <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+                <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 p-3 shadow-xl text-sm text-slate-300">
+                    <div><strong>Vertices:</strong> {vertices.length}</div>
+                    <div><strong>Walls:</strong> {segments.length}</div>
+                    <div><strong>Openings:</strong> {openings.length}</div>
+                    <div><strong>Power Entries:</strong> {electricalEntries.length}</div>
+                    <div><strong>Components:</strong> {components.length}</div>
+                    {mode === 'DRAW' && (
+                        <div className="mt-2 text-xs text-slate-400">
+                            Click to add vertices. Click near existing vertex to connect.
                         </div>
                     )}
-
-                    {/* Selected Opening Properties */}
-                    {selectedOpeningId && (
-                        <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-orange-500/50 p-4 shadow-xl text-sm w-64 animate-in slide-in-from-left duration-200">
-                            <div className="flex justify-between items-center mb-3">
-                                <h4 className="font-bold text-orange-400 uppercase tracking-wider text-xs">
-                                    Selected {openings.find(op => op.id === selectedOpeningId)?.type}
-                                </h4>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedOpeningId(null)}
-                                    className="text-slate-500 hover:text-white"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Width (ft)</label>
-                                    <input
-                                        type="number"
-                                        value={openings.find(op => op.id === selectedOpeningId)?.width || 3}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            if (!isNaN(val)) {
-                                                setOpenings(prev => prev.map(op =>
-                                                    op.id === selectedOpeningId ? { ...op, width: val } : op
-                                                ));
-                                            }
-                                        }}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono"
-                                    />
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        pushHistory();
-                                        setOpenings(prev => prev.filter(op => op.id !== selectedOpeningId));
-                                        setSelectedOpeningId(null);
-                                    }}
-                                    className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors"
-                                >
-                                    Delete {openings.find(op => op.id === selectedOpeningId)?.type}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Selected Electrical Entry Properties */}
-                    {selectedEntryId && (
-                        <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-yellow-500/50 p-4 shadow-xl text-sm w-64 animate-in slide-in-from-left duration-200">
-                            <div className="flex justify-between items-center mb-3">
-                                <h4 className="font-bold text-yellow-400 uppercase tracking-wider text-xs">Main Power</h4>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedEntryId(null)}
-                                    className="text-slate-500 hover:text-white"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Phase</label>
-                                    <select
-                                        value={electricalEntries.find(ee => ee.id === selectedEntryId)?.type || 'single-phase'}
-                                        onChange={(e) => {
-                                            const val = e.target.value as any;
-                                            setElectricalEntries(prev => prev.map(ee =>
-                                                ee.id === selectedEntryId ? { ...ee, type: val } : ee
-                                            ));
-                                        }}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
-                                    >
-                                        <option value="single-phase">Single Phase</option>
-                                        <option value="three-phase">Three Phase</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Amperage (A)</label>
-                                    <input
-                                        type="number"
-                                        value={electricalEntries.find(ee => ee.id === selectedEntryId)?.amps || 200}
-                                        onChange={(e) => {
-                                            const val = parseInt(e.target.value);
-                                            if (!isNaN(val)) {
-                                                setElectricalEntries(prev => prev.map(ee =>
-                                                    ee.id === selectedEntryId ? { ...ee, amps: val } : ee
-                                                ));
-                                            }
-                                        }}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono"
-                                    />
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        pushHistory();
-                                        setElectricalEntries(prev => prev.filter(ee => ee.id !== selectedEntryId));
-                                        setSelectedEntryId(null);
-                                    }}
-                                    className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors"
-                                >
-                                    Remove Power Entry
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Selected Electrical Run Properties */}
-                    {selectedRunId && (
-                        <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-blue-500/50 p-4 shadow-xl text-sm w-64 animate-in slide-in-from-left duration-200">
-                            <div className="flex justify-between items-center mb-3">
-                                <h4 className="font-bold text-blue-400 uppercase tracking-wider text-xs">Selected Run</h4>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedRunId(null)}
-                                    className="text-slate-500 hover:text-white"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Type</label>
-                                    <select
-                                        value={systemRuns.find(run => run.id === selectedRunId)?.type || 'ELECTRICAL'}
-                                        onChange={(e) => {
-                                            const val = e.target.value as any;
-                                            setSystemRuns(prev => prev.map(run =>
-                                                run.id === selectedRunId ? { ...run, type: val } : run
-                                            ));
-                                        }}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
-                                    >
-                                        <option value="ELECTRICAL">Electrical</option>
-                                        <option value="HVAC">HVAC</option>
-                                        <option value="PLUMBING">Plumbing</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Status</label>
-                                    <select
-                                        value={systemRuns.find(run => run.id === selectedRunId)?.status || 'planned'}
-                                        onChange={(e) => {
-                                            const val = e.target.value as any;
-                                            setSystemRuns(prev => prev.map(run =>
-                                                run.id === selectedRunId ? { ...run, status: val } : run
-                                            ));
-                                        }}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
-                                    >
-                                        <option value="planned">Planned</option>
-                                        <option value="installed">Installed</option>
-                                        <option value="inspected">Inspected</option>
-                                    </select>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        pushHistory();
-                                        setSystemRuns(prev => prev.filter(run => run.id !== selectedRunId));
-                                        setSelectedRunId(null);
-                                    }}
-                                    className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors"
-                                >
-                                    Delete Run
-                                </button>
-                            </div>
+                    {mode === 'ELECTRIC_RUN' && (
+                        <div className="mt-2 text-xs text-slate-400">
+                            Click to add points. Double-click or press Enter to finish run.
                         </div>
                     )}
                 </div>
 
-                {/* Canvas */}
-                <Stage
-                    ref={stageRef}
-                    width={stageSize.width || 800}
-                    height={stageSize.height || 600}
-                    scaleX={scale}
-                    scaleY={scale}
-                    x={stagePos.x}
-                    y={stagePos.y}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onWheel={handleWheel}
-                    className="cursor-crosshair w-full h-full"
-                >
-                    <Layer>
-                        {/* Grid */}
-                        {showGrid && (
-                            <>
-                                {Array.from({ length: Math.ceil(stageSize.width / GRID_SIZE) + 1 }).map((_, i) => (
-                                    <Line
-                                        key={`grid-v-${i}`}
-                                        points={[i * GRID_SIZE, 0, i * GRID_SIZE, stageSize.height]}
-                                        stroke="#334155"
-                                        strokeWidth={0.5}
+                {/* Selected Wall Properties */}
+                {selectedSegmentId && (
+                    <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-blue-500/50 p-4 shadow-xl text-sm w-64 animate-in slide-in-from-left duration-200">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-blue-400 uppercase tracking-wider text-xs">Selected Wall</h4>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedSegmentId(null)}
+                                className="text-slate-500 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Thickness (ft)</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="range"
+                                        min="0.1"
+                                        max="2"
+                                        step="0.05"
+                                        value={segments.find(s => s.id === selectedSegmentId)?.thickness || 0.5}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            setSegments(prev => prev.map(s =>
+                                                s.id === selectedSegmentId ? { ...s, thickness: val } : s
+                                            ));
+                                        }}
+                                        className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 mt-3"
                                     />
-                                ))}
-                                {Array.from({ length: Math.ceil(stageSize.height / GRID_SIZE) + 1 }).map((_, i) => (
-                                    <Line
-                                        key={`grid-h-${i}`}
-                                        points={[0, i * GRID_SIZE, stageSize.width, i * GRID_SIZE]}
-                                        stroke="#334155"
-                                        strokeWidth={0.5}
-                                    />
-                                ))}
-                            </>
-                        )}
-
-                        {/* Segments (walls) - with thickness visualization */}
-                        {segments.map(seg => {
-                            const v1 = vertices.find(v => v.id === seg.a);
-                            const v2 = vertices.find(v => v.id === seg.b);
-                            if (!v1 || !v2) return null;
-
-                            const isSelected = seg.id === selectedSegmentId;
-                            const lengthFt = getSegmentLengthFt(seg);
-
-                            // Calculate wall thickness in pixels (default 6" = 0.5ft)
-                            const thicknessFt = seg.thickness || 0.5;
-                            const thicknessPx = scaleFtPerUnit ? (thicknessFt / scaleFtPerUnit) : 6;
-
-                            return (
-                                <React.Fragment key={seg.id}>
-                                    {/* Main wall line - ALWAYS VISIBLE */}
-                                    <Line
-                                        points={[v1.x, v1.y, v2.x, v2.y]}
-                                        stroke={isSelected ? '#60a5fa' : '#f1f5f9'}
-                                        strokeWidth={Math.max(thicknessPx, 6)}
-                                        lineCap="round"
-                                        lineJoin="round"
-                                        onClick={() => {
-                                            setSelectedSegmentId(seg.id);
-                                            setSelectedVertexId(null);
-                                            setSelectedOpeningId(null);
-                                            setSelectedEntryId(null);
-                                            setSelectedRunId(null);
-                                        }}
-                                        onDragStart={() => {
-                                            pushHistory();
-                                            setSelectedSegmentId(seg.id);
-                                        }}
-                                        onDragMove={(e) => {
-                                            if (mode !== 'EDIT') return;
-                                            // Move both vertices of the segment
-                                            const dx = e.target.x();
-                                            const dy = e.target.y();
-                                            // Reset shape position so it doesn't drift
-                                            e.target.x(0);
-                                            e.target.y(0);
-
-                                            setVertices(prev => prev.map(v => {
-                                                if (v.id === seg.a || v.id === seg.b) {
-                                                    return { ...v, x: v.x + dx, y: v.y + dy };
-                                                }
-                                                return v;
-                                            }));
-                                        }}
-                                        onDragEnd={(e) => {
-                                            if (snapToGridEnabled) {
-                                                setVertices(prev => prev.map(vert => {
-                                                    if (vert.id === seg.a || vert.id === seg.b) {
-                                                        const snapped = snapToGrid(vert, GRID_SIZE);
-                                                        return { ...vert, ...snapped };
-                                                    }
-                                                    return vert;
-                                                }));
+                                    <input
+                                        type="number"
+                                        value={segments.find(s => s.id === selectedSegmentId)?.thickness || 0.5}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            if (!isNaN(val)) {
+                                                setSegments(prev => prev.map(s =>
+                                                    s.id === selectedSegmentId ? { ...s, thickness: val } : s
+                                                ));
                                             }
                                         }}
-                                        hitStrokeWidth={20}
-                                        listening={true}
-                                        perfectDrawEnabled={false}
+                                        className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono"
                                     />
-                                    {/* Length label */}
-                                    {lengthFt && (
-                                        <React.Fragment>
-                                            <Rect
-                                                x={(v1.x + v2.x) / 2 - 20}
-                                                y={(v1.y + v2.y) / 2 - 18}
-                                                width={40}
-                                                height={16}
-                                                fill="#1e293b"
-                                                opacity={0.6}
-                                                cornerRadius={2}
-                                                listening={false}
-                                            />
-                                            <Text
-                                                x={(v1.x + v2.x) / 2 - 20}
-                                                y={(v1.y + v2.y) / 2 - 15}
-                                                width={40}
-                                                text={`${lengthFt}'`}
-                                                fontSize={12}
-                                                fill={isSelected ? '#60a5fa' : '#f1f5f9'}
-                                                fontStyle="bold"
-                                                align="center"
-                                                listening={false}
-                                            />
-                                        </React.Fragment>
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
+                                </div>
+                            </div>
 
-                        {/* Openings (Doors/Windows) */}
-                        {openings.map(op => {
-                            const seg = segments.find(s => s.id === op.segmentId);
-                            if (!seg) return null;
-                            const v1 = vertices.find(v => v.id === seg.a);
-                            const v2 = vertices.find(v => v.id === seg.b);
-                            if (!v1 || !v2) return null;
+                            <div>
+                                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Material</label>
+                                <select
+                                    value={segments.find(s => s.id === selectedSegmentId)?.material || 'drywall'}
+                                    onChange={(e) => {
+                                        const val = e.target.value as any;
+                                        setSegments(prev => prev.map(s =>
+                                            s.id === selectedSegmentId ? { ...s, material: val } : s
+                                        ));
+                                    }}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
+                                >
+                                    <option value="drywall">Drywall (Int)</option>
+                                    <option value="brick">Brick (Ext)</option>
+                                    <option value="concrete">Concrete</option>
+                                </select>
+                            </div>
 
-                            const dx = v2.x - v1.x;
-                            const dy = v2.y - v1.y;
-                            const angle = Math.atan2(dy, dx);
-                            const isSelected = op.id === selectedOpeningId;
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    pushHistory();
+                                    setSegments(prev => prev.filter(s => s.id !== selectedSegmentId));
+                                    setSelectedSegmentId(null);
+                                }}
+                                className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors"
+                            >
+                                Delete Wall
+                            </button>
+                        </div>
+                    </div>
+                )}
 
-                            const ratio = scaleFtPerUnit || 0.05;
-                            const widthPx = op.width / ratio;
+                {/* Selected Opening Properties */}
+                {selectedOpeningId && (
+                    <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-orange-500/50 p-4 shadow-xl text-sm w-64 animate-in slide-in-from-left duration-200">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-orange-400 uppercase tracking-wider text-xs">
+                                Selected {openings.find(op => op.id === selectedOpeningId)?.type}
+                            </h4>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedOpeningId(null)}
+                                className="text-slate-500 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
 
-                            const centerX = v1.x + dx * op.position;
-                            const centerY = v1.y + dy * op.position;
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Width (ft)</label>
+                                <input
+                                    type="number"
+                                    value={openings.find(op => op.id === selectedOpeningId)?.width || 3}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        if (!isNaN(val)) {
+                                            setOpenings(prev => prev.map(op =>
+                                                op.id === selectedOpeningId ? { ...op, width: val } : op
+                                            ));
+                                        }
+                                    }}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono"
+                                />
+                            </div>
 
-                            const startX = centerX - (widthPx / 2) * Math.cos(angle);
-                            const startY = centerY - (widthPx / 2) * Math.sin(angle);
-                            const endX = centerX + (widthPx / 2) * Math.cos(angle);
-                            const endY = centerY + (widthPx / 2) * Math.sin(angle);
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    pushHistory();
+                                    setOpenings(prev => prev.filter(op => op.id !== selectedOpeningId));
+                                    setSelectedOpeningId(null);
+                                }}
+                                className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors"
+                            >
+                                Delete {openings.find(op => op.id === selectedOpeningId)?.type}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
-                            return (
-                                <Group
-                                    key={op.id}
+                {/* Selected Electrical Entry Properties */}
+                {selectedEntryId && (
+                    <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-yellow-500/50 p-4 shadow-xl text-sm w-64 animate-in slide-in-from-left duration-200">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-yellow-400 uppercase tracking-wider text-xs">Main Power</h4>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedEntryId(null)}
+                                className="text-slate-500 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Phase</label>
+                                <select
+                                    value={electricalEntries.find(ee => ee.id === selectedEntryId)?.type || 'single-phase'}
+                                    onChange={(e) => {
+                                        const val = e.target.value as any;
+                                        setElectricalEntries(prev => prev.map(ee =>
+                                            ee.id === selectedEntryId ? { ...ee, type: val } : ee
+                                        ));
+                                    }}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
+                                >
+                                    <option value="single-phase">Single Phase</option>
+                                    <option value="three-phase">Three Phase</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Amperage (A)</label>
+                                <input
+                                    type="number"
+                                    value={electricalEntries.find(ee => ee.id === selectedEntryId)?.amps || 200}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        if (!isNaN(val)) {
+                                            setElectricalEntries(prev => prev.map(ee =>
+                                                ee.id === selectedEntryId ? { ...ee, amps: val } : ee
+                                            ));
+                                        }
+                                    }}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono"
+                                />
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    pushHistory();
+                                    setElectricalEntries(prev => prev.filter(ee => ee.id !== selectedEntryId));
+                                    setSelectedEntryId(null);
+                                }}
+                                className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors"
+                            >
+                                Remove Power Entry
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Selected Electrical Run Properties */}
+                {selectedRunId && (
+                    <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-blue-500/50 p-4 shadow-xl text-sm w-64 animate-in slide-in-from-left duration-200">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-blue-400 uppercase tracking-wider text-xs">Selected Run</h4>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedRunId(null)}
+                                className="text-slate-500 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Type</label>
+                                <select
+                                    value={systemRuns.find(run => run.id === selectedRunId)?.type || 'ELECTRICAL'}
+                                    onChange={(e) => {
+                                        const val = e.target.value as any;
+                                        setSystemRuns(prev => prev.map(run =>
+                                            run.id === selectedRunId ? { ...run, type: val } : run
+                                        ));
+                                    }}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
+                                >
+                                    <option value="ELECTRICAL">Electrical</option>
+                                    <option value="HVAC">HVAC</option>
+                                    <option value="PLUMBING">Plumbing</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Status</label>
+                                <select
+                                    value={systemRuns.find(run => run.id === selectedRunId)?.status || 'planned'}
+                                    onChange={(e) => {
+                                        const val = e.target.value as any;
+                                        setSystemRuns(prev => prev.map(run =>
+                                            run.id === selectedRunId ? { ...run, status: val } : run
+                                        ));
+                                    }}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
+                                >
+                                    <option value="planned">Planned</option>
+                                    <option value="installed">Installed</option>
+                                    <option value="inspected">Inspected</option>
+                                </select>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    pushHistory();
+                                    setSystemRuns(prev => prev.filter(run => run.id !== selectedRunId));
+                                    setSelectedRunId(null);
+                                }}
+                                className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-900/50 transition-colors"
+                            >
+                                Delete Run
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Canvas */}
+            <Stage
+                ref={stageRef}
+                width={stageSize.width || 800}
+                height={stageSize.height || 600}
+                scaleX={scale}
+                scaleY={scale}
+                x={stagePos.x}
+                y={stagePos.y}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onWheel={handleWheel}
+                className="cursor-crosshair w-full h-full"
+            >
+                <Layer>
+                    {/* Grid */}
+                    {showGrid && (
+                        <>
+                            {Array.from({ length: Math.ceil(stageSize.width / GRID_SIZE) + 1 }).map((_, i) => (
+                                <Line
+                                    key={`grid-v-${i}`}
+                                    points={[i * GRID_SIZE, 0, i * GRID_SIZE, stageSize.height]}
+                                    stroke="#334155"
+                                    strokeWidth={0.5}
+                                />
+                            ))}
+                            {Array.from({ length: Math.ceil(stageSize.height / GRID_SIZE) + 1 }).map((_, i) => (
+                                <Line
+                                    key={`grid-h-${i}`}
+                                    points={[0, i * GRID_SIZE, stageSize.width, i * GRID_SIZE]}
+                                    stroke="#334155"
+                                    strokeWidth={0.5}
+                                />
+                            ))}
+                        </>
+                    )}
+
+                    {/* Segments (walls) - with thickness visualization */}
+                    {segments.map(seg => {
+                        const v1 = vertices.find(v => v.id === seg.a);
+                        const v2 = vertices.find(v => v.id === seg.b);
+                        if (!v1 || !v2) return null;
+
+                        const isSelected = seg.id === selectedSegmentId;
+                        const lengthFt = getSegmentLengthFt(seg);
+
+                        // Calculate wall thickness in pixels (default 6" = 0.5ft)
+                        const thicknessFt = seg.thickness || 0.5;
+                        const thicknessPx = scaleFtPerUnit ? (thicknessFt / scaleFtPerUnit) : 6;
+
+                        return (
+                            <React.Fragment key={seg.id}>
+                                {/* Main wall line - ALWAYS VISIBLE */}
+                                <Line
+                                    points={[v1.x, v1.y, v2.x, v2.y]}
+                                    stroke={isSelected ? '#60a5fa' : '#f1f5f9'}
+                                    strokeWidth={Math.max(thicknessPx, 6)}
+                                    lineCap="round"
+                                    lineJoin="round"
                                     onClick={() => {
-                                        setSelectedOpeningId(op.id);
-                                        setSelectedSegmentId(null);
+                                        setSelectedSegmentId(seg.id);
                                         setSelectedVertexId(null);
+                                        setSelectedOpeningId(null);
                                         setSelectedEntryId(null);
                                         setSelectedRunId(null);
                                     }}
-                                >
-                                    {/* Opening Gap background (to clear wall lines visually, though we draw over) */}
-                                    <Line
-                                        points={[startX, startY, endX, endY]}
-                                        stroke="#1e293b"
-                                        strokeWidth={Math.max((seg.thickness || 0.5) / ratio + 2, 8)}
-                                    />
+                                    onDragStart={() => {
+                                        pushHistory();
+                                        setSelectedSegmentId(seg.id);
+                                    }}
+                                    onDragMove={(e) => {
+                                        if (mode !== 'EDIT') return;
+                                        // Move both vertices of the segment
+                                        const dx = e.target.x();
+                                        const dy = e.target.y();
+                                        // Reset shape position so it doesn't drift
+                                        e.target.x(0);
+                                        e.target.y(0);
 
-                                    {op.type === 'door' ? (
-                                        <>
-                                            {/* Door Swing */}
-                                            <Arc
-                                                x={startX}
-                                                y={startY}
-                                                innerRadius={0}
-                                                outerRadius={widthPx}
-                                                angle={90}
-                                                rotation={angle * 180 / Math.PI - 90}
-                                                stroke="#fb923c"
-                                                strokeWidth={2}
-                                                dash={[5, 5]}
-                                            />
-                                            {/* Door Panel */}
-                                            <Line
-                                                points={[startX, startY, startX + widthPx * Math.cos(angle - Math.PI / 2), startY + widthPx * Math.sin(angle - Math.PI / 2)]}
-                                                stroke={isSelected ? '#f97316' : '#fb923c'}
-                                                strokeWidth={3}
-                                            />
-                                        </>
-                                    ) : (
-                                        /* Window */
+                                        setVertices(prev => prev.map(v => {
+                                            if (v.id === seg.a || v.id === seg.b) {
+                                                return { ...v, x: v.x + dx, y: v.y + dy };
+                                            }
+                                            return v;
+                                        }));
+                                    }}
+                                    onDragEnd={(e) => {
+                                        if (snapToGridEnabled) {
+                                            setVertices(prev => prev.map(vert => {
+                                                if (vert.id === seg.a || vert.id === seg.b) {
+                                                    const snapped = snapToGrid(vert, GRID_SIZE);
+                                                    return { ...vert, ...snapped };
+                                                }
+                                                return vert;
+                                            }));
+                                        }
+                                    }}
+                                    hitStrokeWidth={20}
+                                    listening={true}
+                                    perfectDrawEnabled={false}
+                                />
+                                {/* Length label */}
+                                {lengthFt && (
+                                    <React.Fragment>
                                         <Rect
+                                            x={(v1.x + v2.x) / 2 - 20}
+                                            y={(v1.y + v2.y) / 2 - 18}
+                                            width={40}
+                                            height={16}
+                                            fill="#1e293b"
+                                            opacity={0.6}
+                                            cornerRadius={2}
+                                            listening={false}
+                                        />
+                                        <Text
+                                            x={(v1.x + v2.x) / 2 - 20}
+                                            y={(v1.y + v2.y) / 2 - 15}
+                                            width={40}
+                                            text={`${lengthFt}'`}
+                                            fontSize={12}
+                                            fill={isSelected ? '#60a5fa' : '#f1f5f9'}
+                                            fontStyle="bold"
+                                            align="center"
+                                            listening={false}
+                                        />
+                                    </React.Fragment>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+
+                    {/* Openings (Doors/Windows) */}
+                    {openings.map(op => {
+                        const seg = segments.find(s => s.id === op.segmentId);
+                        if (!seg) return null;
+                        const v1 = vertices.find(v => v.id === seg.a);
+                        const v2 = vertices.find(v => v.id === seg.b);
+                        if (!v1 || !v2) return null;
+
+                        const dx = v2.x - v1.x;
+                        const dy = v2.y - v1.y;
+                        const angle = Math.atan2(dy, dx);
+                        const isSelected = op.id === selectedOpeningId;
+
+                        const ratio = scaleFtPerUnit || 0.05;
+                        const widthPx = op.width / ratio;
+
+                        const centerX = v1.x + dx * op.position;
+                        const centerY = v1.y + dy * op.position;
+
+                        const startX = centerX - (widthPx / 2) * Math.cos(angle);
+                        const startY = centerY - (widthPx / 2) * Math.sin(angle);
+                        const endX = centerX + (widthPx / 2) * Math.cos(angle);
+                        const endY = centerY + (widthPx / 2) * Math.sin(angle);
+
+                        return (
+                            <Group
+                                key={op.id}
+                                onClick={() => {
+                                    setSelectedOpeningId(op.id);
+                                    setSelectedSegmentId(null);
+                                    setSelectedVertexId(null);
+                                    setSelectedEntryId(null);
+                                    setSelectedRunId(null);
+                                }}
+                            >
+                                {/* Opening Gap background (to clear wall lines visually, though we draw over) */}
+                                <Line
+                                    points={[startX, startY, endX, endY]}
+                                    stroke="#1e293b"
+                                    strokeWidth={Math.max((seg.thickness || 0.5) / ratio + 2, 8)}
+                                />
+
+                                {op.type === 'door' ? (
+                                    <>
+                                        {/* Door Swing */}
+                                        <Arc
                                             x={startX}
                                             y={startY}
-                                            width={widthPx}
-                                            height={6}
-                                            rotation={angle * 180 / Math.PI}
-                                            fill={isSelected ? '#0ea5e9' : '#7dd3fc'}
-                                            stroke="#38bdf8"
-                                            strokeWidth={1}
-                                            offsetY={3}
-                                        />
-                                    )}
-                                </Group>
-                            );
-                        })}
-
-                        {/* Electrical Entries */}
-                        {electricalEntries.map(ee => {
-                            const isSelected = ee.id === selectedEntryId;
-                            return (
-                                <Group
-                                    key={ee.id}
-                                    x={ee.x}
-                                    y={ee.y}
-                                    onClick={() => {
-                                        setSelectedEntryId(ee.id);
-                                        setSelectedOpeningId(null);
-                                        setSelectedSegmentId(null);
-                                        setSelectedVertexId(null);
-                                        setSelectedRunId(null);
-                                    }}
-                                >
-                                    <Circle
-                                        radius={12}
-                                        fill={isSelected ? '#eab308' : '#854d0e'}
-                                        stroke="#facc15"
-                                        strokeWidth={2}
-                                    />
-                                    <Text
-                                        text="⚡"
-                                        fontSize={14}
-                                        x={-7}
-                                        y={-7}
-                                    />
-                                    <Text
-                                        text={ee.type === 'three-phase' ? '3Ø' : '1Ø'}
-                                        fontSize={8}
-                                        fill="#fff"
-                                        y={14}
-                                        x={-10}
-                                        fontStyle="bold"
-                                    />
-                                </Group>
-                            );
-                        })}
-
-                        {/* System Runs (Electrical Runs) */}
-                        {systemRuns.map(run => {
-                            const isSelected = run.id === selectedRunId;
-                            const points = run.points.flatMap((p: any) => [p.x, p.y]);
-                            return (
-                                <Group
-                                    key={run.id}
-                                    onClick={() => {
-                                        setSelectedRunId(run.id);
-                                        setSelectedEntryId(null);
-                                        setSelectedOpeningId(null);
-                                        setSelectedSegmentId(null);
-                                        setSelectedVertexId(null);
-                                    }}
-                                >
-                                    {/* Glow effect */}
-                                    <Line
-                                        points={points}
-                                        stroke={isSelected ? "#fbbf24" : "#f59e0b"}
-                                        strokeWidth={isSelected ? 6 : 4}
-                                        opacity={0.3}
-                                        lineCap="round"
-                                        lineJoin="round"
-                                        shadowBlur={isSelected ? 10 : 0}
-                                        shadowColor="#f59e0b"
-                                        hitStrokeWidth={15}
-                                    />
-                                    {/* Core line */}
-                                    <Line
-                                        points={points}
-                                        stroke={isSelected ? "#fbbf24" : "#f59e0b"}
-                                        strokeWidth={isSelected ? 3 : 2}
-                                        lineCap="round"
-                                        lineJoin="round"
-                                    />
-                                </Group>
-                            );
-                        })}
-
-                        {/* Components (Furniture, Machinery, etc.) */}
-                        {layerVisibility.components && components.map(comp => {
-                            const isSelected = comp.id === selectedComponentId;
-                            const widthPx = scaleFtPerUnit ? (comp.width / scaleFtPerUnit) : comp.width * 10;
-                            const depthPx = scaleFtPerUnit ? (comp.depth / scaleFtPerUnit) : comp.depth * 10;
-
-                            return (
-                                <Group
-                                    key={comp.id}
-                                    x={comp.x}
-                                    y={comp.y}
-                                    rotation={comp.rotation}
-                                    onClick={() => {
-                                        setSelectedComponentId(comp.id);
-                                        setSelectedVertexId(null);
-                                        setSelectedSegmentId(null);
-                                        setSelectedOpeningId(null);
-                                        setSelectedEntryId(null);
-                                        setSelectedRunId(null);
-                                    }}
-                                    draggable={mode === 'EDIT'}
-                                    onDragEnd={(e) => {
-                                        const newPos = snapToGridEnabled ? snapToGrid({ x: e.target.x(), y: e.target.y() }, GRID_SIZE) : { x: e.target.x(), y: e.target.y() };
-                                        setComponents(prev => prev.map(c =>
-                                            c.id === comp.id ? { ...c, x: newPos.x, y: newPos.y } : c
-                                        ));
-                                        e.target.x(newPos.x);
-                                        e.target.y(newPos.y);
-                                    }}
-                                >
-                                    {/* Component body */}
-                                    <Rect
-                                        x={-widthPx / 2}
-                                        y={-depthPx / 2}
-                                        width={widthPx}
-                                        height={depthPx}
-                                        fill={comp.color || '#6b7280'}
-                                        stroke={isSelected ? '#3b82f6' : '#374151'}
-                                        strokeWidth={isSelected ? 3 : 1}
-                                        cornerRadius={2}
-                                        opacity={0.8}
-                                    />
-                                    {/* Component label */}
-                                    <Text
-                                        text={comp.name}
-                                        fontSize={10}
-                                        fill="#fff"
-                                        fontStyle="bold"
-                                        align="center"
-                                        verticalAlign="middle"
-                                        width={widthPx}
-                                        x={-widthPx / 2}
-                                        y={-5}
-                                    />
-                                    {/* Rotation indicator (small arrow) */}
-                                    {comp.rotation !== 0 && (
-                                        <Line
-                                            points={[0, -depthPx / 2 - 5, 0, -depthPx / 2 - 15]}
-                                            stroke="#60a5fa"
+                                            innerRadius={0}
+                                            outerRadius={widthPx}
+                                            angle={90}
+                                            rotation={angle * 180 / Math.PI - 90}
+                                            stroke="#fb923c"
                                             strokeWidth={2}
-                                            lineCap="round"
+                                            dash={[5, 5]}
                                         />
-                                    )}
-                                    {/* Power requirement indicator */}
-                                    {comp.metadata?.powerRequirement && (
-                                        <Circle
-                                            x={widthPx / 2 - 8}
-                                            y={-depthPx / 2 + 8}
-                                            radius={6}
-                                            fill="#eab308"
-                                            stroke="#fff"
-                                            strokeWidth={1}
+                                        {/* Door Panel */}
+                                        <Line
+                                            points={[startX, startY, startX + widthPx * Math.cos(angle - Math.PI / 2), startY + widthPx * Math.sin(angle - Math.PI / 2)]}
+                                            stroke={isSelected ? '#f97316' : '#fb923c'}
+                                            strokeWidth={3}
                                         />
-                                    )}
-                                </Group>
-                            );
-                        })}
-
-                        {/* Component Placement Ghost */}
-                        {mode === 'COMPONENT' && componentToPlace && ghostPoint && (() => {
-                            const widthPx = scaleFtPerUnit ? (componentToPlace.width / scaleFtPerUnit) : componentToPlace.width * 10;
-                            const depthPx = scaleFtPerUnit ? (componentToPlace.depth / scaleFtPerUnit) : componentToPlace.depth * 10;
-
-                            return (
-                                <Group
-                                    x={ghostPoint.x}
-                                    y={ghostPoint.y}
-                                    rotation={componentRotation}
-                                >
+                                    </>
+                                ) : (
+                                    /* Window */
                                     <Rect
-                                        x={-widthPx / 2}
-                                        y={-depthPx / 2}
+                                        x={startX}
+                                        y={startY}
                                         width={widthPx}
-                                        height={depthPx}
-                                        fill={componentToPlace.color || '#6b7280'}
-                                        stroke="#3b82f6"
-                                        strokeWidth={2}
-                                        dash={[5, 5]}
-                                        cornerRadius={2}
-                                        opacity={0.5}
+                                        height={6}
+                                        rotation={angle * 180 / Math.PI}
+                                        fill={isSelected ? '#0ea5e9' : '#7dd3fc'}
+                                        stroke="#38bdf8"
+                                        strokeWidth={1}
+                                        offsetY={3}
                                     />
-                                    <Text
-                                        text={componentToPlace.name}
-                                        fontSize={10}
-                                        fill="#fff"
-                                        fontStyle="bold"
-                                        align="center"
-                                        width={widthPx}
-                                        x={-widthPx / 2}
-                                        y={-5}
-                                        opacity={0.7}
-                                    />
-                                </Group>
-                            );
-                        })()}
+                                )}
+                            </Group>
+                        );
+                    })}
 
-                        {/* Selection Marquee */}
-                        {selectionRect && (
-                            <Rect
-                                x={Math.min(selectionRect.x1, selectionRect.x2)}
-                                y={Math.min(selectionRect.y1, selectionRect.y2)}
-                                width={Math.abs(selectionRect.x2 - selectionRect.x1)}
-                                height={Math.abs(selectionRect.y2 - selectionRect.y1)}
-                                fill="rgba(59, 130, 246, 0.2)"
-                                stroke="#3b82f6"
-                                strokeWidth={1}
-                                dash={[4, 4]}
-                            />
-                        )}
-
-                        {/* Active Run Drawing Preview */}
-                        {mode === 'ELECTRIC_RUN' && activeRunPoints.length > 0 && (() => {
-                            const previewPoints = [...activeRunPoints.flatMap((p: any) => [p.x, p.y])];
-                            if (ghostPoint) {
-                                previewPoints.push(ghostPoint.x, ghostPoint.y);
-                            }
-                            return (
-                                <Line
-                                    points={previewPoints}
-                                    stroke="#f59e0b"
+                    {/* Electrical Entries */}
+                    {electricalEntries.map(ee => {
+                        const isSelected = ee.id === selectedEntryId;
+                        return (
+                            <Group
+                                key={ee.id}
+                                x={ee.x}
+                                y={ee.y}
+                                onClick={() => {
+                                    setSelectedEntryId(ee.id);
+                                    setSelectedOpeningId(null);
+                                    setSelectedSegmentId(null);
+                                    setSelectedVertexId(null);
+                                    setSelectedRunId(null);
+                                }}
+                            >
+                                <Circle
+                                    radius={12}
+                                    fill={isSelected ? '#eab308' : '#854d0e'}
+                                    stroke="#facc15"
                                     strokeWidth={2}
-                                    dash={[5, 5]}
+                                />
+                                <Text
+                                    text="⚡"
+                                    fontSize={14}
+                                    x={-7}
+                                    y={-7}
+                                />
+                                <Text
+                                    text={ee.type === 'three-phase' ? '3Ø' : '1Ø'}
+                                    fontSize={8}
+                                    fill="#fff"
+                                    y={14}
+                                    x={-10}
+                                    fontStyle="bold"
+                                />
+                            </Group>
+                        );
+                    })}
+
+                    {/* System Runs (Electrical Runs) */}
+                    {systemRuns.map(run => {
+                        const isSelected = run.id === selectedRunId;
+                        const points = run.points.flatMap((p: any) => [p.x, p.y]);
+                        return (
+                            <Group
+                                key={run.id}
+                                onClick={() => {
+                                    setSelectedRunId(run.id);
+                                    setSelectedEntryId(null);
+                                    setSelectedOpeningId(null);
+                                    setSelectedSegmentId(null);
+                                    setSelectedVertexId(null);
+                                }}
+                            >
+                                {/* Glow effect */}
+                                <Line
+                                    points={points}
+                                    stroke={isSelected ? "#fbbf24" : "#f59e0b"}
+                                    strokeWidth={isSelected ? 6 : 4}
+                                    opacity={0.3}
+                                    lineCap="round"
+                                    lineJoin="round"
+                                    shadowBlur={isSelected ? 10 : 0}
+                                    shadowColor="#f59e0b"
+                                    hitStrokeWidth={15}
+                                />
+                                {/* Core line */}
+                                <Line
+                                    points={points}
+                                    stroke={isSelected ? "#fbbf24" : "#f59e0b"}
+                                    strokeWidth={isSelected ? 3 : 2}
                                     lineCap="round"
                                     lineJoin="round"
                                 />
-                            );
-                        })()}
+                            </Group>
+                        );
+                    })}
 
+                    {/* Components (Furniture, Machinery, etc.) */}
+                    {layerVisibility.components && components.map(comp => {
+                        const isSelected = comp.id === selectedComponentId;
+                        const widthPx = scaleFtPerUnit ? (comp.width / scaleFtPerUnit) : comp.width * 10;
+                        const depthPx = scaleFtPerUnit ? (comp.depth / scaleFtPerUnit) : comp.depth * 10;
 
-                        {/* Vertices */}
-                        {vertices.map(v => {
-                            const isSelected = v.id === selectedVertexId;
-                            return (
-                                <Circle
-                                    key={v.id}
-                                    x={v.x}
-                                    y={v.y}
-                                    radius={isSelected ? 8 : 6}
-                                    fill={isSelected ? '#3b82f6' : '#10b981'}
-                                    stroke="#fff"
-                                    strokeWidth={2}
-                                    onClick={(e) => {
-                                        e.cancelBubble = true;
-                                        setSelectedVertexId(v.id);
-                                        setSelectedSegmentId(null);
-                                    }}
-                                    draggable={mode === 'EDIT'}
-                                    onDragStart={() => {
-                                        pushHistory();
-                                        setSelectedVertexId(v.id);
-                                        setSelectedSegmentId(null);
-                                    }}
-                                    onDragMove={(e) => {
-                                        const newPos = { x: e.target.x(), y: e.target.y() };
-                                        setVertices(prev =>
-                                            prev.map(vertex =>
-                                                vertex.id === v.id ? { ...vertex, ...newPos } : vertex
-                                            )
-                                        );
-                                    }}
-                                    onDragEnd={(e) => {
-                                        const newPos = { x: e.target.x(), y: e.target.y() };
-                                        const snapped = snapToGridEnabled ? snapToGrid(newPos, GRID_SIZE) : newPos;
-                                        setVertices(prev =>
-                                            prev.map(vertex =>
-                                                vertex.id === v.id ? { ...vertex, ...snapped } : vertex
-                                            )
-                                        );
-                                    }}
+                        return (
+                            <Group
+                                key={comp.id}
+                                x={comp.x}
+                                y={comp.y}
+                                rotation={comp.rotation}
+                                onClick={() => {
+                                    setSelectedComponentId(comp.id);
+                                    setSelectedVertexId(null);
+                                    setSelectedSegmentId(null);
+                                    setSelectedOpeningId(null);
+                                    setSelectedEntryId(null);
+                                    setSelectedRunId(null);
+                                }}
+                                draggable={mode === 'EDIT'}
+                                onDragEnd={(e) => {
+                                    const newPos = snapToGridEnabled ? snapToGrid({ x: e.target.x(), y: e.target.y() }, GRID_SIZE) : { x: e.target.x(), y: e.target.y() };
+                                    setComponents(prev => prev.map(c =>
+                                        c.id === comp.id ? { ...c, x: newPos.x, y: newPos.y } : c
+                                    ));
+                                    e.target.x(newPos.x);
+                                    e.target.y(newPos.y);
+                                }}
+                            >
+                                {/* Component body */}
+                                <Rect
+                                    x={-widthPx / 2}
+                                    y={-depthPx / 2}
+                                    width={widthPx}
+                                    height={depthPx}
+                                    fill={comp.color || '#6b7280'}
+                                    stroke={isSelected ? '#3b82f6' : '#374151'}
+                                    strokeWidth={isSelected ? 3 : 1}
+                                    cornerRadius={2}
+                                    opacity={0.8}
                                 />
-                            );
-                        })}
-
-                        {/* Ghost point - Preview line with dynamic measurement */}
-                        {mode === 'DRAW' && ghostPoint && vertices.length > 0 && (() => {
-                            const lastVertex = vertices[vertices.length - 1];
-                            const dx = ghostPoint.x - lastVertex.x;
-                            const dy = ghostPoint.y - lastVertex.y;
-
-                            // Use typed measurement if available
-                            const typedLength = parseFloat(sketchupInput);
-                            const isUsingTyped = !isNaN(typedLength) && typedLength > 0;
-
-                            let lengthPx = Math.sqrt(dx * dx + dy * dy);
-                            let previewEnd = ghostPoint;
-
-                            if (isUsingTyped) {
-                                const pixelsPerFoot = scaleFtPerUnit ? (1 / scaleFtPerUnit) : 20;
-                                lengthPx = typedLength * pixelsPerFoot;
-                                const angle = Math.atan2(dy, dx);
-                                previewEnd = {
-                                    x: lastVertex.x + lengthPx * Math.cos(angle),
-                                    y: lastVertex.y + lengthPx * Math.sin(angle)
-                                };
-                            }
-
-                            const lengthFt = scaleFtPerUnit ? (lengthPx * scaleFtPerUnit).toFixed(1) : (lengthPx / 20).toFixed(1);
-                            const angleDeg = Math.round((Math.atan2(-dy, dx) * 180) / Math.PI);
-
-                            // Calculate wall thickness for preview (same as actual walls)
-                            const thicknessFt = 0.5;
-                            const thicknessPx = scaleFtPerUnit ? (thicknessFt / scaleFtPerUnit) : 6;
-
-                            return (
-                                <>
-                                    {/* Thick preview line */}
+                                {/* Component label */}
+                                <Text
+                                    text={comp.name}
+                                    fontSize={10}
+                                    fill="#fff"
+                                    fontStyle="bold"
+                                    align="center"
+                                    verticalAlign="middle"
+                                    width={widthPx}
+                                    x={-widthPx / 2}
+                                    y={-5}
+                                />
+                                {/* Rotation indicator (small arrow) */}
+                                {comp.rotation !== 0 && (
                                     <Line
-                                        points={[lastVertex.x, lastVertex.y, previewEnd.x, previewEnd.y]}
-                                        stroke={isUsingTyped ? '#fbbf24' : '#94a3b8'}
-                                        strokeWidth={Math.max(thicknessPx, 6)}
-                                        opacity={isUsingTyped ? 0.9 : 0.6}
-                                        dash={[8, 8]}
+                                        points={[0, -depthPx / 2 - 5, 0, -depthPx / 2 - 15]}
+                                        stroke="#60a5fa"
+                                        strokeWidth={2}
                                         lineCap="round"
-                                        lineJoin="round"
-                                        listening={false}
-                                        perfectDrawEnabled={false}
                                     />
-                                    {/* Preview endpoint circle */}
+                                )}
+                                {/* Power requirement indicator */}
+                                {comp.metadata?.powerRequirement && (
                                     <Circle
-                                        x={previewEnd.x}
-                                        y={previewEnd.y}
+                                        x={widthPx / 2 - 8}
+                                        y={-depthPx / 2 + 8}
                                         radius={6}
-                                        fill={isUsingTyped ? '#fbbf24' : '#94a3b8'}
-                                        opacity={0.6}
-                                        listening={false}
-                                        perfectDrawEnabled={false}
+                                        fill="#eab308"
+                                        stroke="#fff"
+                                        strokeWidth={1}
                                     />
-                                    {/* Dynamic measurement tooltip - simplified to prevent flashing */}
-                                    {lengthFt && (
-                                        <>
-                                            {/* Background rectangle for better visibility */}
-                                            <Rect
-                                                x={(lastVertex.x + previewEnd.x) / 2 - 50}
-                                                y={(lastVertex.y + previewEnd.y) / 2 - 35}
-                                                width={100}
-                                                height={24}
-                                                fill="#000000"
-                                                opacity={0.8}
-                                                cornerRadius={4}
-                                                listening={false}
-                                                perfectDrawEnabled={false}
-                                            />
-                                            <Text
-                                                x={(lastVertex.x + previewEnd.x) / 2 - 50}
-                                                y={(lastVertex.y + previewEnd.y) / 2 - 32}
-                                                width={100}
-                                                text={`${lengthFt}' @ ${angleDeg}°`}
-                                                fontSize={14}
-                                                fill={isUsingTyped ? '#fbbf24' : '#ffffff'}
-                                                fontStyle="bold"
-                                                align="center"
-                                                listening={false}
-                                                perfectDrawEnabled={false}
-                                            />
-                                        </>
-                                    )}
-                                </>
-                            );
-                        })()}
-                    </Layer>
-                </Stage>
+                                )}
+                            </Group>
+                        );
+                    })}
 
-                {/* Quick Dimension Dialog */}
-                {showQuickDimension && (
+                    {/* Component Placement Ghost */}
+                    {mode === 'COMPONENT' && componentToPlace && ghostPoint && (() => {
+                        const widthPx = scaleFtPerUnit ? (componentToPlace.width / scaleFtPerUnit) : componentToPlace.width * 10;
+                        const depthPx = scaleFtPerUnit ? (componentToPlace.depth / scaleFtPerUnit) : componentToPlace.depth * 10;
+
+                        return (
+                            <Group
+                                x={ghostPoint.x}
+                                y={ghostPoint.y}
+                                rotation={componentRotation}
+                            >
+                                <Rect
+                                    x={-widthPx / 2}
+                                    y={-depthPx / 2}
+                                    width={widthPx}
+                                    height={depthPx}
+                                    fill={componentToPlace.color || '#6b7280'}
+                                    stroke="#3b82f6"
+                                    strokeWidth={2}
+                                    dash={[5, 5]}
+                                    cornerRadius={2}
+                                    opacity={0.5}
+                                />
+                                <Text
+                                    text={componentToPlace.name}
+                                    fontSize={10}
+                                    fill="#fff"
+                                    fontStyle="bold"
+                                    align="center"
+                                    width={widthPx}
+                                    x={-widthPx / 2}
+                                    y={-5}
+                                    opacity={0.7}
+                                />
+                            </Group>
+                        );
+                    })()}
+
+                    {/* Selection Marquee */}
+                    {selectionRect && (
+                        <Rect
+                            x={Math.min(selectionRect.x1, selectionRect.x2)}
+                            y={Math.min(selectionRect.y1, selectionRect.y2)}
+                            width={Math.abs(selectionRect.x2 - selectionRect.x1)}
+                            height={Math.abs(selectionRect.y2 - selectionRect.y1)}
+                            fill="rgba(59, 130, 246, 0.2)"
+                            stroke="#3b82f6"
+                            strokeWidth={1}
+                            dash={[4, 4]}
+                        />
+                    )}
+
+                    {/* Active Run Drawing Preview */}
+                    {mode === 'ELECTRIC_RUN' && activeRunPoints.length > 0 && (() => {
+                        const previewPoints = [...activeRunPoints.flatMap((p: any) => [p.x, p.y])];
+                        if (ghostPoint) {
+                            previewPoints.push(ghostPoint.x, ghostPoint.y);
+                        }
+                        return (
+                            <Line
+                                points={previewPoints}
+                                stroke="#f59e0b"
+                                strokeWidth={2}
+                                dash={[5, 5]}
+                                lineCap="round"
+                                lineJoin="round"
+                            />
+                        );
+                    })()}
+
+
+                    {/* Vertices */}
+                    {vertices.map(v => {
+                        const isSelected = v.id === selectedVertexId;
+                        return (
+                            <Circle
+                                key={v.id}
+                                x={v.x}
+                                y={v.y}
+                                radius={isSelected ? 8 : 6}
+                                fill={isSelected ? '#3b82f6' : '#10b981'}
+                                stroke="#fff"
+                                strokeWidth={2}
+                                onClick={(e) => {
+                                    e.cancelBubble = true;
+                                    setSelectedVertexId(v.id);
+                                    setSelectedSegmentId(null);
+                                }}
+                                draggable={mode === 'EDIT'}
+                                onDragStart={() => {
+                                    pushHistory();
+                                    setSelectedVertexId(v.id);
+                                    setSelectedSegmentId(null);
+                                }}
+                                onDragMove={(e) => {
+                                    const newPos = { x: e.target.x(), y: e.target.y() };
+                                    setVertices(prev =>
+                                        prev.map(vertex =>
+                                            vertex.id === v.id ? { ...vertex, ...newPos } : vertex
+                                        )
+                                    );
+                                }}
+                                onDragEnd={(e) => {
+                                    const newPos = { x: e.target.x(), y: e.target.y() };
+                                    const snapped = snapToGridEnabled ? snapToGrid(newPos, GRID_SIZE) : newPos;
+                                    setVertices(prev =>
+                                        prev.map(vertex =>
+                                            vertex.id === v.id ? { ...vertex, ...snapped } : vertex
+                                        )
+                                    );
+                                }}
+                            />
+                        );
+                    })}
+
+                    {/* Ghost point - Preview line with dynamic measurement */}
+                    {mode === 'DRAW' && ghostPoint && vertices.length > 0 && (() => {
+                        const lastVertex = vertices[vertices.length - 1];
+                        const dx = ghostPoint.x - lastVertex.x;
+                        const dy = ghostPoint.y - lastVertex.y;
+
+                        // Use typed measurement if available
+                        const typedLength = parseFloat(sketchupInput);
+                        const isUsingTyped = !isNaN(typedLength) && typedLength > 0;
+
+                        let lengthPx = Math.sqrt(dx * dx + dy * dy);
+                        let previewEnd = ghostPoint;
+
+                        if (isUsingTyped) {
+                            const pixelsPerFoot = scaleFtPerUnit ? (1 / scaleFtPerUnit) : 20;
+                            lengthPx = typedLength * pixelsPerFoot;
+                            const angle = Math.atan2(dy, dx);
+                            previewEnd = {
+                                x: lastVertex.x + lengthPx * Math.cos(angle),
+                                y: lastVertex.y + lengthPx * Math.sin(angle)
+                            };
+                        }
+
+                        const lengthFt = scaleFtPerUnit ? (lengthPx * scaleFtPerUnit).toFixed(1) : (lengthPx / 20).toFixed(1);
+                        const angleDeg = Math.round((Math.atan2(-dy, dx) * 180) / Math.PI);
+
+                        // Calculate wall thickness for preview (same as actual walls)
+                        const thicknessFt = 0.5;
+                        const thicknessPx = scaleFtPerUnit ? (thicknessFt / scaleFtPerUnit) : 6;
+
+                        return (
+                            <>
+                                {/* Thick preview line */}
+                                <Line
+                                    points={[lastVertex.x, lastVertex.y, previewEnd.x, previewEnd.y]}
+                                    stroke={isUsingTyped ? '#fbbf24' : '#94a3b8'}
+                                    strokeWidth={Math.max(thicknessPx, 6)}
+                                    opacity={isUsingTyped ? 0.9 : 0.6}
+                                    dash={[8, 8]}
+                                    lineCap="round"
+                                    lineJoin="round"
+                                    listening={false}
+                                    perfectDrawEnabled={false}
+                                />
+                                {/* Preview endpoint circle */}
+                                <Circle
+                                    x={previewEnd.x}
+                                    y={previewEnd.y}
+                                    radius={6}
+                                    fill={isUsingTyped ? '#fbbf24' : '#94a3b8'}
+                                    opacity={0.6}
+                                    listening={false}
+                                    perfectDrawEnabled={false}
+                                />
+                                {/* Dynamic measurement tooltip - simplified to prevent flashing */}
+                                {lengthFt && (
+                                    <>
+                                        {/* Background rectangle for better visibility */}
+                                        <Rect
+                                            x={(lastVertex.x + previewEnd.x) / 2 - 50}
+                                            y={(lastVertex.y + previewEnd.y) / 2 - 35}
+                                            width={100}
+                                            height={24}
+                                            fill="#000000"
+                                            opacity={0.8}
+                                            cornerRadius={4}
+                                            listening={false}
+                                            perfectDrawEnabled={false}
+                                        />
+                                        <Text
+                                            x={(lastVertex.x + previewEnd.x) / 2 - 50}
+                                            y={(lastVertex.y + previewEnd.y) / 2 - 32}
+                                            width={100}
+                                            text={`${lengthFt}' @ ${angleDeg}°`}
+                                            fontSize={14}
+                                            fill={isUsingTyped ? '#fbbf24' : '#ffffff'}
+                                            fontStyle="bold"
+                                            align="center"
+                                            listening={false}
+                                            perfectDrawEnabled={false}
+                                        />
+                                    </>
+                                )}
+                            </>
+                        );
+                    })()}
+                </Layer>
+            </Stage>
+
+            {/* Quick Dimension Dialog */}
+            {
+                showQuickDimension && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
                         <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 max-w-md w-full mx-4">
                             <h3 className="text-xl font-bold text-white mb-4">Create Rectangle</h3>
@@ -2163,10 +2180,12 @@ export function ImprovedWallEditor({
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            }
 
-                {/* Scale Dialog */}
-                {showScaleDialog && (
+            {/* Scale Dialog */}
+            {
+                showScaleDialog && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
                         <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 max-w-md w-full mx-4">
                             <h3 className="text-xl font-bold text-white mb-4">Set Scale</h3>
@@ -2218,10 +2237,12 @@ export function ImprovedWallEditor({
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            }
 
-                {/* Dimension Input Dialog - for entering exact wall length */}
-                {showDimensionInput && pendingWallStart && (
+            {/* Dimension Input Dialog - for entering exact wall length */}
+            {
+                showDimensionInput && pendingWallStart && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
                         <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 max-w-md w-full mx-4">
                             <h3 className="text-xl font-bold text-white mb-4">Enter Wall Dimensions</h3>
@@ -2334,44 +2355,44 @@ export function ImprovedWallEditor({
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            }
 
-                {/* SketchUp-style Measurement Box (Lower Right) - Always Visible like SketchUp */}
-                <div className="absolute bottom-6 right-6 z-30">
-                    <div className="bg-slate-800/90 backdrop-blur border border-slate-700 rounded-lg shadow-2xl flex items-center overflow-hidden h-12 min-w-[280px]">
-                        {/* Length Input */}
-                        <div className="flex items-center flex-1 border-r border-slate-700 px-3">
-                            <span className="text-[10px] uppercase font-bold text-blue-400 tracking-widest mr-2">Length</span>
-                            <input
-                                ref={sketchupInputRef}
-                                type="text"
-                                value={sketchupInput}
-                                onChange={(e) => setSketchupInput(e.target.value)}
-                                onFocus={() => setShowSketchupInput(true)}
-                                onBlur={() => setShowSketchupInput(false)}
-                                className="bg-transparent text-white font-mono text-xl outline-none w-24"
-                                placeholder="0.0"
-                            />
-                            <span className="text-slate-500 font-mono text-sm ml-1">ft</span>
-                        </div>
+            {/* SketchUp-style Measurement Box (Lower Right) - Always Visible like SketchUp */}
+            <div className="absolute bottom-6 right-6 z-30">
+                <div className="bg-slate-800/90 backdrop-blur border border-slate-700 rounded-lg shadow-2xl flex items-center overflow-hidden h-12 min-w-[280px]">
+                    {/* Length Input */}
+                    <div className="flex items-center flex-1 border-r border-slate-700 px-3">
+                        <span className="text-[10px] uppercase font-bold text-blue-400 tracking-widest mr-2">Length</span>
+                        <input
+                            ref={sketchupInputRef}
+                            type="text"
+                            value={sketchupInput}
+                            onChange={(e) => setSketchupInput(e.target.value)}
+                            onFocus={() => setShowSketchupInput(true)}
+                            onBlur={() => setShowSketchupInput(false)}
+                            className="bg-transparent text-white font-mono text-xl outline-none w-24"
+                            placeholder="0.0"
+                        />
+                        <span className="text-slate-500 font-mono text-sm ml-1">ft</span>
+                    </div>
 
-                        {/* Dynamic Angle Readout (Current mouse direction) */}
-                        <div className="flex items-center px-4 bg-slate-900/50 h-full">
-                            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mr-2">Angle</span>
-                            <span className="text-white font-mono text-xl">
-                                {(() => {
-                                    if (!ghostPoint || vertices.length === 0) return '0';
-                                    const lastVertex = vertices[vertices.length - 1];
-                                    const dx = ghostPoint.x - lastVertex.x;
-                                    const dy = ghostPoint.y - lastVertex.y;
-                                    return Math.round((Math.atan2(-dy, dx) * 180) / Math.PI);
-                                })()}
-                            </span>
-                            <span className="text-slate-500 font-mono text-sm ml-0.5">°</span>
-                        </div>
+                    {/* Dynamic Angle Readout (Current mouse direction) */}
+                    <div className="flex items-center px-4 bg-slate-900/50 h-full">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mr-2">Angle</span>
+                        <span className="text-white font-mono text-xl">
+                            {(() => {
+                                if (!ghostPoint || vertices.length === 0) return '0';
+                                const lastVertex = vertices[vertices.length - 1];
+                                const dx = ghostPoint.x - lastVertex.x;
+                                const dy = ghostPoint.y - lastVertex.y;
+                                return Math.round((Math.atan2(-dy, dx) * 180) / Math.PI);
+                            })()}
+                        </span>
+                        <span className="text-slate-500 font-mono text-sm ml-0.5">°</span>
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
