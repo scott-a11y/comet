@@ -6,6 +6,7 @@ import useImage from 'use-image';
 import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment, BuildingOpening, ElectricalEntry, Component, ComponentCategory, LayerVisibility } from '@/lib/types/building-geometry';
 import { COMPONENT_CATALOG, createComponentFromTemplate, type ComponentTemplate } from '@/lib/wall-designer/component-catalog';
 import { convertPDFToImage, validatePDFFile } from '@/lib/wall-designer/pdf-upload-handler';
+import { analyzeBlueprintWithAI, validateAnalysisResult } from '@/lib/wall-designer/blueprint-analyzer';
 
 interface Props {
     buildingWidth?: number;
@@ -328,6 +329,38 @@ export function ImprovedWallEditor({
             setUploadingPDF(false);
         }
     }, []);
+
+    // Handle blueprint analysis (DEBUG)
+    const handleAnalyzeBlueprint = useCallback(async () => {
+        if (!blueprintImage) {
+            alert('Please upload a blueprint first');
+            return;
+        }
+
+        console.log('🔍 Starting blueprint analysis...');
+        console.log('Request Payload:', { imageLength: blueprintImage.length });
+
+        try {
+            const result = await analyzeBlueprintWithAI(blueprintImage);
+
+            console.log('✅ Raw AI Response:', result);
+            console.log('📊 Validation Result:', validateAnalysisResult(result) ? 'VALID' : 'INVALID');
+            console.log('🧱 Walls detected:', result.walls.length);
+            console.log('🚪 Doors detected:', result.doors.length);
+            console.log('🪟 Windows detected:', result.windows.length);
+            console.log('📏 Scale info:', result.scale);
+            console.log('🎯 Confidence:', result.confidence);
+
+            if (result.walls.length > 0) {
+                console.log('Sample wall:', result.walls[0]);
+            }
+
+            alert(`Analysis complete! Found ${result.walls.length} walls. Check console for details.`);
+        } catch (error) {
+            console.error('❌ Analysis error:', error);
+            alert(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }, [blueprintImage]);
 
     // Get world coordinates from stage event
     const getWorldPos = useCallback((e: any) => {
@@ -1128,6 +1161,13 @@ export function ImprovedWallEditor({
                                         className="flex-1 px-2 py-1 text-xs bg-red-900/40 hover:bg-red-700 text-red-100 rounded transition-all"
                                     >
                                         Remove
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleAnalyzeBlueprint}
+                                        className="flex-1 px-2 py-1 text-xs bg-purple-700/80 hover:bg-purple-600 text-purple-50 rounded transition-all font-bold"
+                                    >
+                                        ⚡ Analyze
                                     </button>
                                 </div>
                             </div>
