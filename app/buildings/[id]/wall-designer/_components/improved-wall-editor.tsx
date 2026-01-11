@@ -330,7 +330,9 @@ export function ImprovedWallEditor({
         }
     }, []);
 
-    // Handle blueprint analysis (DEBUG)
+    // Handle blueprint analysis
+    const [analyzing, setAnalyzing] = useState(false);
+
     const handleAnalyzeBlueprint = useCallback(async () => {
         if (!blueprintImage) {
             alert('Please upload a blueprint first');
@@ -358,9 +360,10 @@ export function ImprovedWallEditor({
             alert(`Analysis complete! Found ${result.walls.length} walls. Check console for details.`);
         } catch (error) {
             console.error('❌ Analysis error:', error);
+            setAnalyzing(false);
             alert(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
-    }, [blueprintImage]);
+    }, [blueprintImage, pushHistory]);
 
     // Get world coordinates from stage event
     const getWorldPos = useCallback((e: any) => {
@@ -1447,6 +1450,74 @@ export function ImprovedWallEditor({
                 onDragEnd={(e) => {
                     setPan({ x: e.target.x(), y: e.target.y() });
                 }}
+                onMouseDown={(e) => {
+                    if (mode !== 'DRAW' && mode !== 'SELECT') return;
+
+                    const pos = getWorldPos(e);
+                    if (!pos) return;
+
+                    if (mode === 'DRAW') {
+                        // Check if clicking near existing vertex
+                        const nearVertex = vertices.find(v =>
+                            distance(v, pos) < SNAP_DIST / scale
+                        );
+
+                        if (nearVertex) {
+                            // Connect to existing vertex
+                            if (vertices.length > 0) {
+                                const lastVertex = vertices[vertices.length - 1];
+                                if (lastVertex.id !== nearVertex.id) {
+                                    pushHistory();
+                                    setSegments([...segments, {
+                                        id: newId('s'),
+                                        a: lastVertex.id,
+                                        b: nearVertex.id,
+                                        material: 'drywall',
+                                        thickness: 6,
+                                    }]);
+                                }
+                            }
+                        } else {
+                            // Create new vertex
+                            const snappedPos = snapToGridEnabled ? snapToGrid(pos) : pos;
+                            const newVertex: BuildingVertex = {
+                                id: newId('v'),
+                                x: snappedPos.x,
+                                y: snappedPos.y,
+                            };
+
+                            pushHistory();
+                            setVertices([...vertices, newVertex]);
+
+                            // Auto-connect to previous vertex
+                            if (vertices.length > 0) {
+                                const lastVertex = vertices[vertices.length - 1];
+                                setSegments([...segments, {
+                                    id: newId('s'),
+                                    a: lastVertex.id,
+                                    b: newVertex.id,
+                                    material: 'drywall',
+                                    thickness: 6,
+                                }]);
+                            }
+                        }
+                    }
+                }}
+                onMouseMove={(e) => {
+                    if (mode === 'DRAW') {
+                        const pos = getWorldPos(e);
+                        if (pos) {
+                            const snappedPos = snapToGridEnabled ? snapToGrid(pos) : pos;
+                            setGhostPoint(snappedPos);
+                        }
+                    }
+                }}
+                onMouseLeave={() => {
+                    setGhostPoint(null);
+                }}
+                style={{
+                    cursor: mode === 'DRAW' ? 'crosshair' : mode === 'PAN' ? 'grab' : 'default',
+                }}
             >
                 {/* Blueprint Background Layer */}
                 {blueprintImage && (
@@ -1466,9 +1537,63 @@ export function ImprovedWallEditor({
 
                 {/* Main Drawing Layer - Walls, Components, etc. */}
                 <Layer>
-                    {/* TODO: Add wall rendering here */}
-                    {/* TODO: Add component rendering here */}
-                    {/* TODO: Add electrical runs rendering here */}
+                    {/* Render wall segments */}
+                    {segments.map(segment => {
+                        const vertexA = vertices.find(v => v.id === segment.a);
+                        const vertexB = vertices.find(v => v.id === segment.b);
+                        if (!vertexA || !vertexB) return null;
+
+                        return (
+                            <Line
+                                key={segment.id}
+                                points={[vertexA.x, vertexA.y, vertexB.x, vertexB.y]}
+                                stroke="#3b82f6"
+                                strokeWidth={segment.thickness || 6}
+                                lineCap="round"
+                                lineJoin="round"
+                            />
+                        );
+                    })}
+
+                    {/* Render vertices */}
+                    {vertices.map(vertex => (
+                        <Circle
+                            key={vertex.id}
+                            x={vertex.x}
+                            y={vertex.y}
+                            radius={8}
+                            fill="#60a5fa"
+                            stroke="#1e40af"
+                            strokeWidth={2}
+                        />
+                    ))}
+
+                    {/* Ghost point for DRAW mode */}
+                    {ghostPoint && mode === 'DRAW' && (
+                        <>
+                            <Circle
+                                x={ghostPoint.x}
+                                y={ghostPoint.y}
+                                radius={6}
+                                fill="#94a3b8"
+                                opacity={0.5}
+                            />
+                            {vertices.length > 0 && (
+                                <Line
+                                    points={[
+                                        vertices[vertices.length - 1].x,
+                                        vertices[vertices.length - 1].y,
+                                        ghostPoint.x,
+                                        ghostPoint.y,
+                                    ]}
+                                    stroke="#94a3b8"
+                                    strokeWidth={2}
+                                    dash={[5, 5]}
+                                    opacity={0.5}
+                                />
+                            )}
+                        </>
+                    )}
                 </Layer>
             </Stage>
 
