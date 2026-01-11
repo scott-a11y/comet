@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Line, Circle, Text, Rect, Arc, Group } from 'react-konva';
 import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment, BuildingOpening, ElectricalEntry, Component, ComponentCategory, LayerVisibility } from '@/lib/types/building-geometry';
 import { COMPONENT_CATALOG, createComponentFromTemplate, type ComponentTemplate } from '@/lib/wall-designer/component-catalog';
+import { convertPDFToImage, validatePDFFile } from '@/lib/wall-designer/pdf-upload-handler';
 
 interface Props {
     buildingWidth?: number;
@@ -120,6 +121,15 @@ export function ImprovedWallEditor({
         components: true,
         measurements: true
     });
+
+    // PDF Blueprint overlay state
+    const [blueprintImage, setBlueprintImage] = useState<string | null>(null);
+    const [blueprintOpacity, setBlueprintOpacity] = useState(0.5);
+    const [blueprintPosition, setBlueprintPosition] = useState({ x: 0, y: 0 });
+    const [blueprintScale, setBlueprintScale] = useState(1);
+    const [blueprintRotation, setBlueprintRotation] = useState(0);
+    const [uploadingPDF, setUploadingPDF] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const pushHistory = useCallback(() => {
         setHistory(prev => {
@@ -263,6 +273,43 @@ export function ImprovedWallEditor({
         }
         stageRef.current?.container()?.focus();
     }, [sketchupInput, vertices, ghostPoint, scaleFtPerUnit, snapToGridEnabled, wallMaterial, wallThickness, selectedSegmentId, pushHistory]);
+
+    // Handle PDF blueprint upload
+    const handlePDFUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validate file
+        const validation = validatePDFFile(file);
+        if (!validation.valid) {
+            alert(validation.error);
+            return;
+        }
+
+        setUploadingPDF(true);
+
+        try {
+            // Convert PDF to image
+            const result = await convertPDFToImage(file);
+
+            // Set blueprint image
+            setBlueprintImage(result.imageUrl);
+            setBlueprintOpacity(0.5);
+            setBlueprintPosition({ x: 0, y: 0 });
+            setBlueprintScale(1);
+            setBlueprintRotation(0);
+
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        } catch (error) {
+            console.error('PDF upload error:', error);
+            alert(`Failed to load PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setUploadingPDF(false);
+        }
+    }, []);
 
     // Get world coordinates from stage event
     const getWorldPos = useCallback((e: any) => {
@@ -1029,7 +1076,44 @@ export function ImprovedWallEditor({
                             >
                                 🔗 CLOSE LOOP
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploadingPDF}
+                                className="px-3 py-1.5 bg-blue-700/80 hover:bg-blue-600 text-blue-50 text-[11px] font-bold rounded-lg transition-all border border-blue-500/30 disabled:opacity-30 whitespace-nowrap"
+                            >
+                                {uploadingPDF ? '⏳ LOADING...' : '📄 UPLOAD PDF'}
+                            </button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pdf"
+                                onChange={handlePDFUpload}
+                                className="hidden"
+                            />
                         </div>
+                        {blueprintImage && (
+                            <div className="flex flex-col gap-1 mt-2">
+                                <label className="text-[8px] text-slate-500 uppercase font-bold">Blueprint Opacity</label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={blueprintOpacity * 100}
+                                    onChange={(e) => setBlueprintOpacity(parseInt(e.target.value) / 100)}
+                                    className="w-full"
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setBlueprintImage(null)}
+                                        className="flex-1 px-2 py-1 text-xs bg-red-900/40 hover:bg-red-700 text-red-100 rounded transition-all"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         <div className="flex gap-2">
                             <button onClick={handleUndo} disabled={history.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↩</button>
                             <button onClick={handleRedo} disabled={redoStack.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↪</button>
