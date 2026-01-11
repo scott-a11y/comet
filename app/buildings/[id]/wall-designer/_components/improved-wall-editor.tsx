@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Line, Circle, Text, Rect, Arc, Group } from 'react-konva';
+import { Stage, Layer, Line, Circle, Text, Rect, Arc, Group, Image as KonvaImage } from 'react-konva';
+import useImage from 'use-image';
 import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment, BuildingOpening, ElectricalEntry, Component, ComponentCategory, LayerVisibility } from '@/lib/types/building-geometry';
 import { COMPONENT_CATALOG, createComponentFromTemplate, type ComponentTemplate } from '@/lib/wall-designer/component-catalog';
 import { convertPDFToImage, validatePDFFile } from '@/lib/wall-designer/pdf-upload-handler';
@@ -38,6 +39,22 @@ function snapToGrid(p: { x: number; y: number }, gridSize = GRID_SIZE) {
 
 function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
     return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+}
+
+// Blueprint Image Component - Uses useImage hook to load image for Konva
+function BlueprintImage({ src }: { src: string }) {
+    const [image, status] = useImage(src);
+
+    if (status === 'loading') {
+        return null; // Or could show a loading placeholder
+    }
+
+    if (status === 'failed') {
+        console.error('Failed to load blueprint image');
+        return null;
+    }
+
+    return <KonvaImage image={image} />;
 }
 
 export function ImprovedWallEditor({
@@ -1402,9 +1419,7 @@ export function ImprovedWallEditor({
                             rotation={blueprintRotation}
                             opacity={blueprintOpacity}
                         >
-                            {/* Blueprint image will be rendered here */}
-                            {/* Note: Konva.Image requires loading the image first */}
-                            {/* This is a placeholder - actual image rendering will be added */}
+                            <BlueprintImage src={blueprintImage} />
                         </Group>
                     </Layer>
                 )}
