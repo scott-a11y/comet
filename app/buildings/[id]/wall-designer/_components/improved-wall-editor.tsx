@@ -127,6 +127,7 @@ export function ImprovedWallEditor({
     // Panel visibility state
     const [showScalePanel, setShowScalePanel] = useState(true);
     const [showLayerPanel, setShowLayerPanel] = useState(true);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     // Layer visibility state
     const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>({
@@ -1003,236 +1004,267 @@ export function ImprovedWallEditor({
             <div className={`absolute z-20 transition-all duration-500 ease-in-out ${toolbarDock === 'top-left' ? 'top-4 left-4 w-auto' :
                 toolbarDock === 'top-center' ? 'top-4 left-1/2 -translate-x-1/2 w-max max-w-[95vw]' :
                     toolbarDock === 'bottom-center' ? 'bottom-4 left-1/2 -translate-x-1/2 w-max max-w-[95vw]' :
-                        'top-4 left-4 bottom-4 w-72'
+                        sidebarCollapsed ? 'top-4 left-4 bottom-4 w-12' : 'top-4 left-4 bottom-4 w-72'
                 }`}>
                 <div className={`bg-slate-800/95 backdrop-blur-md rounded-xl border border-slate-700 p-4 shadow-2xl flex ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-row items-start gap-8' : 'flex-col gap-4'
                     }`}>
                     {/* Header with Dock Toggle */}
                     <div className={`flex items-center justify-between ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-col items-start gap-1 h-full' : 'mb-1'}`}>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Architect</span>
-                            <span className="text-[8px] text-slate-500 font-medium">v1.2 // Wall Designer</span>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const positions: Array<typeof toolbarDock> = ['top-left', 'top-center', 'bottom-center', 'left-bar'];
-                                const next = positions[(positions.indexOf(toolbarDock) + 1) % positions.length];
-                                setToolbarDock(next);
-                            }}
-                            className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-500 hover:text-white transition-all transform hover:rotate-90"
-                            title="Move Toolbar"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    {/* Tools Group */}
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Design Tools</label>
-                        <div className="flex gap-2 flex-wrap">
-                            <button
-                                type="button"
-                                onClick={() => setMode('DRAW')}
-                                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'DRAW' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                            >
-                                ✏️ DRAW
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMode('EDIT')}
-                                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'EDIT' ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                            >
-                                🔧 EDIT
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMode('SELECT')}
-                                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'SELECT' ? 'bg-violet-600 border-violet-400 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                            >
-                                🖱️ SELECT
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMode('PAN')}
-                                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'PAN' ? 'bg-slate-600 border-slate-400 text-white shadow-[0_0_15px_rgba(71,85,105,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                            >
-                                ✋ PAN
-                            </button>
-                        </div>
-                        <div className="flex gap-2 mt-1">
-                            <button
-                                type="button"
-                                onClick={() => setMode('DOOR')}
-                                className={`flex-1 py-1.5 rounded font-bold text-[10px] border transition-all ${mode === 'DOOR' ? 'bg-orange-600 border-orange-400 text-white shadow-[0_0_10px_rgba(234,88,12,0.3)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                            >
-                                🚪 DOOR
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMode('WINDOW')}
-                                className={`flex-1 py-1.5 rounded font-bold text-[10px] border transition-all ${mode === 'WINDOW' ? 'bg-sky-600 border-sky-400 text-white shadow-[0_0_10px_rgba(2,132,199,0.3)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                            >
-                                🪟 WINDOW
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Systems Group */}
-                    <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
-                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Systems</label>
-                        <div className="flex gap-2 min-w-[140px]">
-                            <button
-                                type="button"
-                                onClick={() => setMode('POWER')}
-                                className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${mode === 'POWER' ? 'bg-amber-600 border-amber-400 text-white shadow-[0_0_15px_rgba(217,119,6,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                            >
-                                ⚡ POWER
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setMode('ELECTRIC_RUN');
-                                    setActiveRunPoints([]);
-                                }}
-                                className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${mode === 'ELECTRIC_RUN' ? 'bg-yellow-600 border-yellow-400 text-white shadow-[0_0_15px_rgba(202,138,4,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                            >
-                                🔌 RUN
-                            </button>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setShowComponentBrowser(!showComponentBrowser)}
-                            className={`w-full py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${showComponentBrowser ? 'bg-green-600 border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
-                        >
-                            📦 COMPONENTS
-                        </button>
-                    </div>
-
-                    {/* Actions Group */}
-                    <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
-                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Actions</label>
-                        <div className="flex gap-1.5 flex-wrap">
-                            <button
-                                type="button"
-                                onClick={() => setShowQuickDimension(true)}
-                                className="px-2 py-1 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-50 text-[10px] font-bold rounded transition-all border border-emerald-500/30 whitespace-nowrap"
-                            >
-                                📐 RECT
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleCloseLoop}
-                                disabled={vertices.length < 3}
-                                className="px-2 py-1 bg-purple-700/80 hover:bg-purple-600 text-purple-50 text-[10px] font-bold rounded transition-all border border-purple-500/30 disabled:opacity-30 whitespace-nowrap"
-                            >
-                                🔗 LOOP
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={uploadingPDF}
-                                className="px-2 py-1 bg-blue-700/80 hover:bg-blue-600 text-blue-50 text-[10px] font-bold rounded transition-all border border-blue-500/30 disabled:opacity-30 whitespace-nowrap"
-                            >
-                                {uploadingPDF ? '⏳' : '📄 PDF'}
-                            </button>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".pdf"
-                                onChange={handlePDFUpload}
-                                className="hidden"
-                            />
-                        </div>
-                        {blueprintImage && (
-                            <div className="flex flex-col gap-1 mt-2">
-                                <label className="text-[8px] text-slate-500 uppercase font-bold">Blueprint Opacity</label>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={blueprintOpacity * 100}
-                                    onChange={(e) => setBlueprintOpacity(parseInt(e.target.value) / 100)}
-                                    className="w-full"
-                                />
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setBlueprintImage(null)}
-                                        className="flex-1 px-2 py-1 text-xs bg-red-900/40 hover:bg-red-700 text-red-100 rounded transition-all"
-                                    >
-                                        Remove
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleAnalyzeBlueprint}
-                                        className="flex-1 px-2 py-1 text-xs bg-purple-700/80 hover:bg-purple-600 text-purple-50 rounded transition-all font-bold"
-                                    >
-                                        ⚡ Analyze
-                                    </button>
-                                </div>
+                        {!sidebarCollapsed && toolbarDock === 'left-bar' && (
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Architect</span>
+                                <span className="text-[8px] text-slate-500 font-medium">v1.2 // Wall Designer</span>
                             </div>
                         )}
-                        <div className="flex gap-2">
-                            <button onClick={handleUndo} disabled={history.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↩</button>
-                            <button onClick={handleRedo} disabled={redoStack.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↪</button>
-                            <button onClick={handleClear} className="flex-1 p-1.5 bg-red-900/40 hover:bg-red-700 text-red-100 rounded-md transition-all font-bold">🗑</button>
-                        </div>
+                        {toolbarDock === 'left-bar' && (
+                            <button
+                                type="button"
+                                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                                className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-500 hover:text-white transition-all"
+                                title={sidebarCollapsed ? "Expand Toolbar" : "Collapse Toolbar"}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {sidebarCollapsed ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    )}
+                                </svg>
+                            </button>
+                        )}
+                        {!sidebarCollapsed && toolbarDock !== 'left-bar' && (
+                            <>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Architect</span>
+                                    <span className="text-[8px] text-slate-500 font-medium">v1.2 // Wall Designer</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const positions: Array<typeof toolbarDock> = ['top-left', 'top-center', 'bottom-center', 'left-bar'];
+                                        const next = positions[(positions.indexOf(toolbarDock) + 1) % positions.length];
+                                        setToolbarDock(next);
+                                    }}
+                                    className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-500 hover:text-white transition-all transform hover:rotate-90"
+                                    title="Move Toolbar"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                                    </svg>
+                                </button>
+                            </>
+                        )}
                     </div>
 
-                    {/* Defaults Group */}
-                    <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : 'border-t border-slate-700 pt-3'}`}>
-                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Settings</label>
-                        <div className={`flex gap-4 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-row items-center' : 'flex-col'}`}>
-                            <div className="flex gap-2">
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[8px] text-slate-500 uppercase font-bold">Wall Thickness</span>
+                    {!sidebarCollapsed && (
+                        <div className="flex flex-col gap-4">
+
+                            {/* Tools Group */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Design Tools</label>
+                                <div className="flex gap-2 flex-wrap">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('DRAW')}
+                                        className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'DRAW' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                    >
+                                        ✏️ DRAW
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('EDIT')}
+                                        className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'EDIT' ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                    >
+                                        🔧 EDIT
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('SELECT')}
+                                        className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'SELECT' ? 'bg-violet-600 border-violet-400 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                    >
+                                        🖱️ SELECT
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('PAN')}
+                                        className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'PAN' ? 'bg-slate-600 border-slate-400 text-white shadow-[0_0_15px_rgba(71,85,105,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                    >
+                                        ✋ PAN
+                                    </button>
+                                </div>
+                                <div className="flex gap-2 mt-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('DOOR')}
+                                        className={`flex-1 py-1.5 rounded font-bold text-[10px] border transition-all ${mode === 'DOOR' ? 'bg-orange-600 border-orange-400 text-white shadow-[0_0_10px_rgba(234,88,12,0.3)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                    >
+                                        🚪 DOOR
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('WINDOW')}
+                                        className={`flex-1 py-1.5 rounded font-bold text-[10px] border transition-all ${mode === 'WINDOW' ? 'bg-sky-600 border-sky-400 text-white shadow-[0_0_10px_rgba(2,132,199,0.3)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                    >
+                                        🪟 WINDOW
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Systems Group */}
+                            <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
+                                <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Systems</label>
+                                <div className="flex gap-2 min-w-[140px]">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('POWER')}
+                                        className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${mode === 'POWER' ? 'bg-amber-600 border-amber-400 text-white shadow-[0_0_15px_rgba(217,119,6,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                    >
+                                        ⚡ POWER
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMode('ELECTRIC_RUN');
+                                            setActiveRunPoints([]);
+                                        }}
+                                        className={`flex-1 py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${mode === 'ELECTRIC_RUN' ? 'bg-yellow-600 border-yellow-400 text-white shadow-[0_0_15px_rgba(202,138,4,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                    >
+                                        🔌 RUN
+                                    </button>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowComponentBrowser(!showComponentBrowser)}
+                                    className={`w-full py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${showComponentBrowser ? 'bg-green-600 border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                                >
+                                    📦 COMPONENTS
+                                </button>
+                            </div>
+
+                            {/* Actions Group */}
+                            <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
+                                <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Actions</label>
+                                <div className="flex gap-1.5 flex-wrap">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowQuickDimension(true)}
+                                        className="px-2 py-1 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-50 text-[10px] font-bold rounded transition-all border border-emerald-500/30 whitespace-nowrap"
+                                    >
+                                        📐 RECT
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleCloseLoop}
+                                        disabled={vertices.length < 3}
+                                        className="px-2 py-1 bg-purple-700/80 hover:bg-purple-600 text-purple-50 text-[10px] font-bold rounded transition-all border border-purple-500/30 disabled:opacity-30 whitespace-nowrap"
+                                    >
+                                        🔗 LOOP
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploadingPDF}
+                                        className="px-2 py-1 bg-blue-700/80 hover:bg-blue-600 text-blue-50 text-[10px] font-bold rounded transition-all border border-blue-500/30 disabled:opacity-30 whitespace-nowrap"
+                                    >
+                                        {uploadingPDF ? '⏳' : '📄 PDF'}
+                                    </button>
                                     <input
-                                        type="number"
-                                        value={wallThickness}
-                                        onChange={(e) => setWallThickness(e.target.value)}
-                                        className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] font-mono"
-                                        step="0.1"
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept=".pdf"
+                                        onChange={handlePDFUpload}
+                                        className="hidden"
                                     />
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[8px] text-slate-500 uppercase font-bold">Type</span>
-                                    <select
-                                        value={wallMaterial}
-                                        onChange={(e) => setWallMaterial(e.target.value as any)}
-                                        className="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px]"
-                                    >
-                                        <option value="drywall">Drywall</option>
-                                        <option value="brick">Brick</option>
-                                        <option value="concrete">Concrete</option>
-                                    </select>
+                                {blueprintImage && (
+                                    <div className="flex flex-col gap-1 mt-2">
+                                        <label className="text-[8px] text-slate-500 uppercase font-bold">Blueprint Opacity</label>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            value={blueprintOpacity * 100}
+                                            onChange={(e) => setBlueprintOpacity(parseInt(e.target.value) / 100)}
+                                            className="w-full"
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setBlueprintImage(null)}
+                                                className="flex-1 px-2 py-1 text-xs bg-red-900/40 hover:bg-red-700 text-red-100 rounded transition-all"
+                                            >
+                                                Remove
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleAnalyzeBlueprint}
+                                                className="flex-1 px-2 py-1 text-xs bg-purple-700/80 hover:bg-purple-600 text-purple-50 rounded transition-all font-bold"
+                                            >
+                                                ⚡ Analyze
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex gap-2">
+                                    <button onClick={handleUndo} disabled={history.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↩</button>
+                                    <button onClick={handleRedo} disabled={redoStack.length === 0} className="flex-1 p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-md disabled:opacity-20 transition-all font-bold">↪</button>
+                                    <button onClick={handleClear} className="flex-1 p-1.5 bg-red-900/40 hover:bg-red-700 text-red-100 rounded-md transition-all font-bold">🗑</button>
                                 </div>
                             </div>
-                            <div className="flex gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
-                                    <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">GRID</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input type="checkbox" checked={snapToGridEnabled} onChange={e => setSnapToGridEnabled(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
-                                    <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">SNAP</span>
-                                </label>
-                            </div>
-                            <div className="flex gap-4 mt-2">
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input type="checkbox" checked={showScalePanel} onChange={e => setShowScalePanel(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
-                                    <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">SCALE</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input type="checkbox" checked={showLayerPanel} onChange={e => setShowLayerPanel(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
-                                    <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">LAYERS</span>
-                                </label>
+
+                            {/* Defaults Group */}
+                            <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : 'border-t border-slate-700 pt-3'}`}>
+                                <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Settings</label>
+                                <div className={`flex gap-4 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'flex-row items-center' : 'flex-col'}`}>
+                                    <div className="flex gap-2">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[8px] text-slate-500 uppercase font-bold">Wall Thickness</span>
+                                            <input
+                                                type="number"
+                                                value={wallThickness}
+                                                onChange={(e) => setWallThickness(e.target.value)}
+                                                className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] font-mono"
+                                                step="0.1"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[8px] text-slate-500 uppercase font-bold">Type</span>
+                                            <select
+                                                value={wallMaterial}
+                                                onChange={(e) => setWallMaterial(e.target.value as any)}
+                                                className="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px]"
+                                            >
+                                                <option value="drywall">Drywall</option>
+                                                <option value="brick">Brick</option>
+                                                <option value="concrete">Concrete</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
+                                            <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">GRID</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input type="checkbox" checked={snapToGridEnabled} onChange={e => setSnapToGridEnabled(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
+                                            <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">SNAP</span>
+                                        </label>
+                                    </div>
+                                    <div className="flex gap-4 mt-2">
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input type="checkbox" checked={showScalePanel} onChange={e => setShowScalePanel(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
+                                            <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">SCALE</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input type="checkbox" checked={showLayerPanel} onChange={e => setShowLayerPanel(e.target.checked)} className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20" />
+                                            <span className="text-[9px] text-slate-400 group-hover:text-slate-200 transition-colors">LAYERS</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                </>
+                    )}
             </div>
 
             {/* Scale indicator */}
