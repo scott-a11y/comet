@@ -86,6 +86,7 @@ export function ImprovedWallEditor({
     const [ghostPoint, setGhostPoint] = useState<{ x: number; y: number } | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
     const hasLoadedInitialRef = useRef(false);
 
     const [openings, setOpenings] = useState<BuildingOpening[]>([]);
@@ -1352,6 +1353,69 @@ export function ImprovedWallEditor({
                     </div>
                 </div>
             )}
+
+            {/* Konva Canvas - Main Drawing Surface */}
+            <Stage
+                width={stageSize.width}
+                height={stageSize.height}
+                scaleX={scale}
+                scaleY={scale}
+                x={pan.x}
+                y={pan.y}
+                draggable={mode === 'PAN'}
+                onWheel={(e) => {
+                    e.evt.preventDefault();
+                    const scaleBy = 1.05;
+                    const stage = e.target.getStage();
+                    if (!stage) return;
+
+                    const oldScale = stage.scaleX();
+                    const pointer = stage.getPointerPosition();
+                    if (!pointer) return;
+
+                    const mousePointTo = {
+                        x: (pointer.x - stage.x()) / oldScale,
+                        y: (pointer.y - stage.y()) / oldScale,
+                    };
+
+                    const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+                    setScale(newScale);
+
+                    const newPos = {
+                        x: pointer.x - mousePointTo.x * newScale,
+                        y: pointer.y - mousePointTo.y * newScale,
+                    };
+                    setPan(newPos);
+                }}
+                onDragEnd={(e) => {
+                    setPan({ x: e.target.x(), y: e.target.y() });
+                }}
+            >
+                {/* Blueprint Background Layer */}
+                {blueprintImage && (
+                    <Layer>
+                        <Group
+                            x={blueprintPosition.x}
+                            y={blueprintPosition.y}
+                            scaleX={blueprintScale}
+                            scaleY={blueprintScale}
+                            rotation={blueprintRotation}
+                            opacity={blueprintOpacity}
+                        >
+                            {/* Blueprint image will be rendered here */}
+                            {/* Note: Konva.Image requires loading the image first */}
+                            {/* This is a placeholder - actual image rendering will be added */}
+                        </Group>
+                    </Layer>
+                )}
+
+                {/* Main Drawing Layer - Walls, Components, etc. */}
+                <Layer>
+                    {/* TODO: Add wall rendering here */}
+                    {/* TODO: Add component rendering here */}
+                    {/* TODO: Add electrical runs rendering here */}
+                </Layer>
+            </Stage>
 
             {/* Stats */}
             <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
