@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth-middleware';
 
 // POST /api/layouts/[layoutId]/material-flow-paths - Create new material flow path
-export const POST = withAuth(async (req: NextRequest, context: any) => {
+export const POST = withAuth(async (userId: string, req: NextRequest, context: any) => {
     try {
         const layoutId = parseInt(context.params.layoutId);
 

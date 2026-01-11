@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth-middleware';
 
 // DELETE /api/layouts/[layoutId]/material-flow-paths/[pathId] - Delete material flow path
-export const DELETE = withAuth(async (req: NextRequest, context: any) => {
+export const DELETE = withAuth(async (userId: string, req: NextRequest, context: any) => {
     try {
         const layoutId = parseInt(context.params.layoutId);
         const pathId = parseInt(context.params.pathId);

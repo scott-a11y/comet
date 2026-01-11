@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth-middleware';
 
 // GET /api/buildings/[id]/entry-points - List all entry points for a building
-export const GET = withAuth(async (req: NextRequest, context: any) => {
+export const GET = withAuth(async (userId: string, req: NextRequest, context: any) => {
     try {
         const buildingId = parseInt(context.params.id);
 
@@ -36,7 +36,7 @@ export const GET = withAuth(async (req: NextRequest, context: any) => {
 });
 
 // POST /api/buildings/[id]/entry-points - Create new entry point
-export const POST = withAuth(async (req: NextRequest, context: any) => {
+export const POST = withAuth(async (userId: string, req: NextRequest, context: any) => {
     try {
         const buildingId = parseInt(context.params.id);
 

@@ -29,30 +29,65 @@ export type ElectricalEntry = {
   amps: number; // e.g. 100, 200, 400
 };
 
+export type ComponentCategory = 'furniture' | 'cabinet' | 'machinery' | 'equipment' | 'storage';
+
+export type Component = {
+  id: string;
+  category: ComponentCategory;
+  name: string; // e.g., "Table Saw", "Workbench", "Cabinet"
+  x: number; // grid units
+  y: number; // grid units
+  width: number; // feet
+  depth: number; // feet
+  height?: number; // feet (for 3D visualization)
+  rotation: number; // degrees (0, 90, 180, 270)
+  color?: string; // hex color for rendering
+  metadata?: {
+    manufacturer?: string;
+    model?: string;
+    powerRequirement?: string;
+    notes?: string;
+  };
+};
+
+export type SystemRun = {
+  id: string;
+  type: 'ELECTRICAL' | 'HVAC' | 'PLUMBING' | 'DUST_COLLECTION' | 'COMPRESSED_AIR';
+  points: Array<{ x: number, y: number }>;
+  status?: 'planned' | 'installed' | 'inspected';
+  diameter?: number; // in inches for ducts/pipes
+  gauge?: string; // wire gauge for electrical
+  metadata?: {
+    voltage?: number;
+    amperage?: number;
+    flowRate?: number;
+    pressure?: number;
+    notes?: string;
+  };
+};
+
+export type LayerVisibility = {
+  walls: boolean;
+  openings: boolean;
+  electrical: boolean;
+  hvac: boolean;
+  plumbing: boolean;
+  dustCollection: boolean;
+  compressedAir: boolean;
+  components: boolean;
+  measurements: boolean;
+};
+
 export type BuildingFloorGeometry = {
   version: 1;
   vertices: BuildingVertex[];
   segments: BuildingWallSegment[];
   openings?: BuildingOpening[];
   electricalEntries?: ElectricalEntry[];
-  // Optional cached polygon ring (closed) derived from segments, in vertex id order
+  components?: Component[];
+  systemRuns?: SystemRun[];
+  layerVisibility?: LayerVisibility;
   ringVertexIds?: string[];
-  equipment?: Array<{
-    id: string;
-    name: string;
-    x: number; // units
-    y: number; // units
-    width: number; // units
-    depth: number; // units
-    rotation: number; // degrees
-  }>;
-  systemRuns?: Array<{
-    id: string;
-    type: 'DUST' | 'AIR' | 'ELECTRICAL';
-    points: Array<{ x: number, y: number }>; // Polyline points in units
-    diameter?: number; // In feet (or units? typically units relative to scale) - let's say units for rendering
-    meta?: Record<string, any>; // For flow data etc.
-  }>;
 };
 
 export type BuildingFloorPlane = {

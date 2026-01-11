@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth-middleware';
 
 // PUT /api/buildings/[id]/entry-points/[entryPointId] - Update entry point
-export const PUT = withAuth(async (req: NextRequest, context: any) => {
+export const PUT = withAuth(async (userId: string, req: NextRequest, context: any) => {
     try {
         const buildingId = parseInt(context.params.id);
         const entryPointId = parseInt(context.params.entryPointId);
@@ -61,7 +61,7 @@ export const PUT = withAuth(async (req: NextRequest, context: any) => {
 });
 
 // DELETE /api/buildings/[id]/entry-points/[entryPointId] - Delete entry point
-export const DELETE = withAuth(async (req: NextRequest, context: any) => {
+export const DELETE = withAuth(async (userId: string, req: NextRequest, context: any) => {
     try {
         const buildingId = parseInt(context.params.id);
         const entryPointId = parseInt(context.params.entryPointId);

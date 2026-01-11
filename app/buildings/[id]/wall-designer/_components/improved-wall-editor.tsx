@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Line, Circle, Text, Rect, Arc, Group } from 'react-konva';
-import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment, BuildingOpening, ElectricalEntry } from '@/lib/types/building-geometry';
+import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment, BuildingOpening, ElectricalEntry, Component, ComponentCategory, LayerVisibility } from '@/lib/types/building-geometry';
+import { COMPONENT_CATALOG, createComponentFromTemplate, type ComponentTemplate } from '@/lib/wall-designer/component-catalog';
 
 interface Props {
     buildingWidth?: number;
@@ -16,7 +17,7 @@ interface Props {
     }) => void;
 }
 
-type Mode = 'DRAW' | 'EDIT' | 'SELECT' | 'PAN' | 'DOOR' | 'WINDOW' | 'POWER' | 'ELECTRIC_RUN';
+type Mode = 'DRAW' | 'EDIT' | 'SELECT' | 'PAN' | 'DOOR' | 'WINDOW' | 'POWER' | 'ELECTRIC_RUN' | 'COMPONENT';
 
 const GRID_SIZE = 20; // pixels
 const SNAP_DIST = 15; // pixels
@@ -68,14 +69,16 @@ export function ImprovedWallEditor({
         segments: BuildingWallSegment[],
         openings: BuildingOpening[],
         electricalEntries: ElectricalEntry[],
-        systemRuns: any[]
+        systemRuns: any[],
+        components: Component[]
     }>>([]);
     const [redoStack, setRedoStack] = useState<Array<{
         vertices: BuildingVertex[],
         segments: BuildingWallSegment[],
         openings: BuildingOpening[],
         electricalEntries: ElectricalEntry[],
-        systemRuns: any[]
+        systemRuns: any[],
+        components: Component[]
     }>>([]);
     const [selectedVertexId, setSelectedVertexId] = useState<string | null>(null);
     const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
@@ -94,6 +97,26 @@ export function ImprovedWallEditor({
     const [selectionRect, setSelectionRect] = useState<{ x1: number, y1: number, x2: number, y2: number } | null>(null);
     const [toolbarDock, setToolbarDock] = useState<'top-left' | 'top-center' | 'bottom-center' | 'left-bar'>('top-left');
 
+    // Component library state
+    const [components, setComponents] = useState<Component[]>([]);
+    const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+    const [componentToPlace, setComponentToPlace] = useState<ComponentTemplate | null>(null);
+    const [componentRotation, setComponentRotation] = useState(0);
+    const [showComponentBrowser, setShowComponentBrowser] = useState(false);
+
+    // Layer visibility state
+    const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>({
+        walls: true,
+        openings: true,
+        electrical: true,
+        hvac: true,
+        plumbing: true,
+        dustCollection: true,
+        compressedAir: true,
+        components: true,
+        measurements: true
+    });
+
     const pushHistory = useCallback(() => {
         setHistory(prev => {
             const snapshot = JSON.parse(JSON.stringify({
@@ -101,14 +124,15 @@ export function ImprovedWallEditor({
                 segments,
                 openings,
                 electricalEntries,
-                systemRuns
+                systemRuns,
+                components
             }));
             const next = [...prev, snapshot];
             if (next.length > 50) return next.slice(1);
             return next;
         });
         setRedoStack([]);
-    }, [vertices, segments, openings, electricalEntries, systemRuns]);
+    }, [vertices, segments, openings, electricalEntries, systemRuns, components]);
 
     // Dimension input while drawing
     const [showDimensionInput, setShowDimensionInput] = useState(false);
@@ -436,6 +460,17 @@ export function ImprovedWallEditor({
                     });
                 }
             }
+        } else if (mode === 'COMPONENT' && componentToPlace) {
+            // Handle component placement
+            pushHistory();
+            const newComponent = createComponentFromTemplate(
+                componentToPlace,
+                snappedPos.x,
+                snappedPos.y,
+                componentRotation
+            );
+            setComponents(prev => [...prev, newComponent]);
+            // Don't clear componentToPlace to allow multiple placements
         } else if (mode === 'PAN') {
             setIsDragging(true);
             setDragStart(pos);
@@ -444,18 +479,17 @@ export function ImprovedWallEditor({
             setDragStart(pos);
             setSelectionRect({ x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y });
         }
-    }, [mode, getWorldPos, snapToGridEnabled, findNearbyVertex, vertices, wallMaterial, wallThickness, electricalEntries, activeRunPoints, pushHistory, scale]);
+    }, [mode, getWorldPos, snapToGridEnabled, findNearbyVertex, vertices, wallMaterial, wallThickness, electricalEntries, activeRunPoints, pushHistory, scale, componentToPlace, componentRotation, components]);
 
     // Throttle ghost point updates using requestAnimationFrame
     const rafIdRef = useRef<number | null>(null);
 
-    // Handle mouse move
     const handleMouseMove = useCallback((e: any) => {
-        if (mode !== 'DRAW' && !(mode === 'PAN' && isDragging) && mode !== 'ELECTRIC_RUN' && !(mode === 'SELECT' && isDragging)) return;
+        if (mode !== 'DRAW' && !(mode === 'PAN' && isDragging) && mode !== 'ELECTRIC_RUN' && mode !== 'COMPONENT' && !(mode === 'SELECT' && isDragging)) return;
 
         const pos = getWorldPos(e);
 
-        if (mode === 'DRAW' || mode === 'ELECTRIC_RUN') {
+        if (mode === 'DRAW' || mode === 'ELECTRIC_RUN' || mode === 'COMPONENT') {
             if (rafIdRef.current !== null) {
                 cancelAnimationFrame(rafIdRef.current);
             }
@@ -550,7 +584,8 @@ export function ImprovedWallEditor({
             segments: [...segments],
             openings: [...openings],
             electricalEntries: [...electricalEntries],
-            systemRuns: [...systemRuns]
+            systemRuns: [...systemRuns],
+            components: [...components]
         };
         const previous = history[history.length - 1];
 
@@ -562,7 +597,8 @@ export function ImprovedWallEditor({
         setOpenings(previous.openings || []);
         setElectricalEntries(previous.electricalEntries || []);
         setSystemRuns(previous.systemRuns || []);
-    }, [history, vertices, segments, openings, electricalEntries, systemRuns]);
+        setComponents(previous.components || []);
+    }, [history, vertices, segments, openings, electricalEntries, systemRuns, components]);
 
     const handleRedo = useCallback(() => {
         if (redoStack.length === 0) return;
@@ -572,7 +608,8 @@ export function ImprovedWallEditor({
             segments: [...segments],
             openings: [...openings],
             electricalEntries: [...electricalEntries],
-            systemRuns: [...systemRuns]
+            systemRuns: [...systemRuns],
+            components: [...components]
         };
         const next = redoStack[redoStack.length - 1];
 
@@ -584,7 +621,8 @@ export function ImprovedWallEditor({
         setOpenings(next.openings || []);
         setElectricalEntries(next.electricalEntries || []);
         setSystemRuns(next.systemRuns || []);
-    }, [redoStack, vertices, segments, openings, electricalEntries, systemRuns]);
+        setComponents(next.components || []);
+    }, [redoStack, vertices, segments, openings, electricalEntries, systemRuns, components]);
 
     // Clear all
     const handleClear = useCallback(() => {
@@ -595,11 +633,13 @@ export function ImprovedWallEditor({
             setOpenings([]);
             setElectricalEntries([]);
             setSystemRuns([]);
+            setComponents([]);
             setSelectedVertexId(null);
             setSelectedSegmentId(null);
             setSelectedOpeningId(null);
             setSelectedEntryId(null);
             setSelectedRunId(null);
+            setSelectedComponentId(null);
         }
     }, [pushHistory]);
 
@@ -690,6 +730,12 @@ export function ImprovedWallEditor({
                     setSelectedRunId(null);
                     return;
                 }
+                if (selectedComponentId) {
+                    pushHistory();
+                    setComponents(prev => prev.filter(c => c.id !== selectedComponentId));
+                    setSelectedComponentId(null);
+                    return;
+                }
             }
 
             // Enter to finish electrical run
@@ -733,6 +779,14 @@ export function ImprovedWallEditor({
                     handleUndo();
                 }
                 return;
+            }
+
+            // 'R' key to rotate component
+            if (e.key === 'r' || e.key === 'R') {
+                if (mode === 'COMPONENT') {
+                    setComponentRotation(prev => (prev + 90) % 360);
+                    return;
+                }
             }
 
             // Redo shortcut (Ctrl+Y)
@@ -783,13 +837,14 @@ export function ImprovedWallEditor({
     // Load initial geometry - check for changes to allow template switching
     useEffect(() => {
         if (initialGeometry) {
-            const currentGeometry = { vertices, segments, openings, electricalEntries, systemRuns };
+            const currentGeometry = { vertices, segments, openings, electricalEntries, systemRuns, components };
             const incomingGeometry = {
                 vertices: initialGeometry.vertices || [],
                 segments: initialGeometry.segments || [],
                 openings: initialGeometry.openings || [],
                 electricalEntries: initialGeometry.electricalEntries || [],
-                systemRuns: initialGeometry.systemRuns || []
+                systemRuns: initialGeometry.systemRuns || [],
+                components: initialGeometry.components || []
             };
 
             // Deep comparison to check if geometry has actually changed
@@ -799,6 +854,10 @@ export function ImprovedWallEditor({
                 setOpenings(incomingGeometry.openings);
                 setElectricalEntries(incomingGeometry.electricalEntries);
                 setSystemRuns(incomingGeometry.systemRuns);
+                setComponents(incomingGeometry.components);
+                if (initialGeometry.layerVisibility) {
+                    setLayerVisibility(initialGeometry.layerVisibility);
+                }
             }
         }
     }, [initialGeometry]);
@@ -814,12 +873,14 @@ export function ImprovedWallEditor({
 
     // Notify parent of changes
     useEffect(() => {
-        const geometry: BuildingFloorGeometry | null = (vertices.length > 0 || openings.length > 0 || electricalEntries.length > 0 || systemRuns.length > 0) ? {
+        const geometry: BuildingFloorGeometry | null = (vertices.length > 0 || openings.length > 0 || electricalEntries.length > 0 || systemRuns.length > 0 || components.length > 0) ? {
             vertices,
             segments,
             openings,
             electricalEntries,
             systemRuns,
+            components,
+            layerVisibility,
             version: 1,
         } : null;
 
@@ -829,7 +890,7 @@ export function ImprovedWallEditor({
         }
 
         onChange({ geometry, scaleFtPerUnit, validationError });
-    }, [vertices, segments, openings, electricalEntries, systemRuns, scaleFtPerUnit, onChange]);
+    }, [vertices, segments, openings, electricalEntries, systemRuns, components, layerVisibility, scaleFtPerUnit, onChange]);
 
     return (
         <div ref={containerRef} className="relative w-full h-full bg-slate-900">
@@ -938,6 +999,13 @@ export function ImprovedWallEditor({
                                     🔌 RUN
                                 </button>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowComponentBrowser(!showComponentBrowser)}
+                                className={`w-full py-2 px-3 rounded-lg font-bold text-[10px] border transition-all flex items-center justify-center gap-2 ${showComponentBrowser ? 'bg-green-600 border-green-400 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
+                            >
+                                📦 COMPONENTS
+                            </button>
                         </div>
 
                         {/* Actions Group */}
@@ -1027,6 +1095,164 @@ export function ImprovedWallEditor({
                     </div>
                 </div>
 
+                {/* Component Browser */}
+                {showComponentBrowser && (
+                    <div className="absolute top-4 right-80 z-20 w-80 bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <div className="p-3 border-b border-slate-700 flex justify-between items-center">
+                            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Component Library</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowComponentBrowser(false)}
+                                className="text-slate-500 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Category Tabs */}
+                        <div className="flex gap-1 p-2 border-b border-slate-700 overflow-x-auto">
+                            {(['furniture', 'cabinet', 'machinery', 'equipment', 'storage'] as ComponentCategory[]).map(cat => (
+                                <button
+                                    key={cat}
+                                    type="button"
+                                    onClick={() => {
+                                        // Scroll to category or filter
+                                    }}
+                                    className="px-3 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors whitespace-nowrap capitalize"
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Component List */}
+                        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                            {Object.entries(COMPONENT_CATALOG).map(([category, templates]) => (
+                                <div key={category}>
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 capitalize">{category}</h4>
+                                    <div className="space-y-2">
+                                        {templates.map((template, idx) => (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => {
+                                                    setComponentToPlace(template);
+                                                    setMode('COMPONENT');
+                                                    setComponentRotation(0);
+                                                }}
+                                                className={`w-full p-3 rounded-lg border transition-all text-left ${componentToPlace?.name === template.name
+                                                    ? 'bg-blue-900/50 border-blue-500 shadow-lg'
+                                                    : 'bg-slate-900/50 border-slate-700 hover:border-slate-500 hover:bg-slate-900'
+                                                    }`}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div
+                                                        className="w-12 h-12 rounded flex-shrink-0"
+                                                        style={{ backgroundColor: template.color || '#6b7280' }}
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-bold text-sm text-white">{template.name}</div>
+                                                        <div className="text-xs text-slate-400 mt-1">
+                                                            {template.width}' × {template.depth}'
+                                                            {template.height && ` × ${template.height}'`}
+                                                        </div>
+                                                        {template.metadata?.powerRequirement && (
+                                                            <div className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                                                                <span>⚡</span>
+                                                                {template.metadata.powerRequirement}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Instructions */}
+                        {componentToPlace && (
+                            <div className="p-3 border-t border-slate-700 bg-slate-900/50">
+                                <div className="text-xs text-slate-400">
+                                    <div className="font-bold text-blue-400 mb-1">Selected: {componentToPlace.name}</div>
+                                    <div>• Click on canvas to place</div>
+                                    <div>• Press <kbd className="px-1 py-0.5 bg-slate-700 rounded text-[10px]">R</kbd> to rotate</div>
+                                    <div>• Rotation: {componentRotation}°</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Layer Management Panel */}
+                <div className="absolute top-4 right-4 z-10 w-64 bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 shadow-xl">
+                    <div className="p-3 border-b border-slate-700">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Layers</h3>
+                    </div>
+                    <div className="p-3 space-y-2">
+                        {[
+                            { key: 'walls' as keyof LayerVisibility, label: '🧱 Walls', color: 'text-slate-300' },
+                            { key: 'openings' as keyof LayerVisibility, label: '🚪 Openings', color: 'text-orange-400' },
+                            { key: 'electrical' as keyof LayerVisibility, label: '⚡ Electrical', color: 'text-yellow-400' },
+                            { key: 'hvac' as keyof LayerVisibility, label: '🌡️ HVAC', color: 'text-blue-400' },
+                            { key: 'plumbing' as keyof LayerVisibility, label: '💧 Plumbing', color: 'text-cyan-400' },
+                            { key: 'dustCollection' as keyof LayerVisibility, label: '🌪️ Dust', color: 'text-purple-400' },
+                            { key: 'compressedAir' as keyof LayerVisibility, label: '💨 Air', color: 'text-gray-400' },
+                            { key: 'components' as keyof LayerVisibility, label: '📦 Components', color: 'text-green-400' },
+                            { key: 'measurements' as keyof LayerVisibility, label: '📏 Measurements', color: 'text-pink-400' },
+                        ].map(layer => (
+                            <label key={layer.key} className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    checked={layerVisibility[layer.key]}
+                                    onChange={(e) => setLayerVisibility(prev => ({ ...prev, [layer.key]: e.target.checked }))}
+                                    className="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/20"
+                                />
+                                <span className={`text-xs ${layer.color} group-hover:text-white transition-colors`}>
+                                    {layer.label}
+                                </span>
+                            </label>
+                        ))}
+                        <div className="pt-2 border-t border-slate-700 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setLayerVisibility({
+                                    walls: true,
+                                    openings: true,
+                                    electrical: true,
+                                    hvac: true,
+                                    plumbing: true,
+                                    dustCollection: true,
+                                    compressedAir: true,
+                                    components: true,
+                                    measurements: true
+                                })}
+                                className="flex-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+                            >
+                                Show All
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setLayerVisibility({
+                                    walls: true,
+                                    openings: false,
+                                    electrical: false,
+                                    hvac: false,
+                                    plumbing: false,
+                                    dustCollection: false,
+                                    compressedAir: false,
+                                    components: false,
+                                    measurements: false
+                                })}
+                                className="flex-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+                            >
+                                Walls Only
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Stats */}
                 <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
                     <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-slate-700 p-3 shadow-xl text-sm text-slate-300">
@@ -1034,7 +1260,7 @@ export function ImprovedWallEditor({
                         <div><strong>Walls:</strong> {segments.length}</div>
                         <div><strong>Openings:</strong> {openings.length}</div>
                         <div><strong>Power Entries:</strong> {electricalEntries.length}</div>
-                        <div><strong>Electrical Runs:</strong> {systemRuns.length}</div>
+                        <div><strong>Components:</strong> {components.length}</div>
                         {mode === 'DRAW' && (
                             <div className="mt-2 text-xs text-slate-400">
                                 Click to add vertices. Click near existing vertex to connect.
@@ -1598,6 +1824,122 @@ export function ImprovedWallEditor({
                                 </Group>
                             );
                         })}
+
+                        {/* Components (Furniture, Machinery, etc.) */}
+                        {layerVisibility.components && components.map(comp => {
+                            const isSelected = comp.id === selectedComponentId;
+                            const widthPx = scaleFtPerUnit ? (comp.width / scaleFtPerUnit) : comp.width * 10;
+                            const depthPx = scaleFtPerUnit ? (comp.depth / scaleFtPerUnit) : comp.depth * 10;
+
+                            return (
+                                <Group
+                                    key={comp.id}
+                                    x={comp.x}
+                                    y={comp.y}
+                                    rotation={comp.rotation}
+                                    onClick={() => {
+                                        setSelectedComponentId(comp.id);
+                                        setSelectedVertexId(null);
+                                        setSelectedSegmentId(null);
+                                        setSelectedOpeningId(null);
+                                        setSelectedEntryId(null);
+                                        setSelectedRunId(null);
+                                    }}
+                                    draggable={mode === 'EDIT'}
+                                    onDragEnd={(e) => {
+                                        const newPos = snapToGridEnabled ? snapToGrid({ x: e.target.x(), y: e.target.y() }, GRID_SIZE) : { x: e.target.x(), y: e.target.y() };
+                                        setComponents(prev => prev.map(c =>
+                                            c.id === comp.id ? { ...c, x: newPos.x, y: newPos.y } : c
+                                        ));
+                                        e.target.x(newPos.x);
+                                        e.target.y(newPos.y);
+                                    }}
+                                >
+                                    {/* Component body */}
+                                    <Rect
+                                        x={-widthPx / 2}
+                                        y={-depthPx / 2}
+                                        width={widthPx}
+                                        height={depthPx}
+                                        fill={comp.color || '#6b7280'}
+                                        stroke={isSelected ? '#3b82f6' : '#374151'}
+                                        strokeWidth={isSelected ? 3 : 1}
+                                        cornerRadius={2}
+                                        opacity={0.8}
+                                    />
+                                    {/* Component label */}
+                                    <Text
+                                        text={comp.name}
+                                        fontSize={10}
+                                        fill="#fff"
+                                        fontStyle="bold"
+                                        align="center"
+                                        verticalAlign="middle"
+                                        width={widthPx}
+                                        x={-widthPx / 2}
+                                        y={-5}
+                                    />
+                                    {/* Rotation indicator (small arrow) */}
+                                    {comp.rotation !== 0 && (
+                                        <Line
+                                            points={[0, -depthPx / 2 - 5, 0, -depthPx / 2 - 15]}
+                                            stroke="#60a5fa"
+                                            strokeWidth={2}
+                                            lineCap="round"
+                                        />
+                                    )}
+                                    {/* Power requirement indicator */}
+                                    {comp.metadata?.powerRequirement && (
+                                        <Circle
+                                            x={widthPx / 2 - 8}
+                                            y={-depthPx / 2 + 8}
+                                            radius={6}
+                                            fill="#eab308"
+                                            stroke="#fff"
+                                            strokeWidth={1}
+                                        />
+                                    )}
+                                </Group>
+                            );
+                        })}
+
+                        {/* Component Placement Ghost */}
+                        {mode === 'COMPONENT' && componentToPlace && ghostPoint && (() => {
+                            const widthPx = scaleFtPerUnit ? (componentToPlace.width / scaleFtPerUnit) : componentToPlace.width * 10;
+                            const depthPx = scaleFtPerUnit ? (componentToPlace.depth / scaleFtPerUnit) : componentToPlace.depth * 10;
+
+                            return (
+                                <Group
+                                    x={ghostPoint.x}
+                                    y={ghostPoint.y}
+                                    rotation={componentRotation}
+                                >
+                                    <Rect
+                                        x={-widthPx / 2}
+                                        y={-depthPx / 2}
+                                        width={widthPx}
+                                        height={depthPx}
+                                        fill={componentToPlace.color || '#6b7280'}
+                                        stroke="#3b82f6"
+                                        strokeWidth={2}
+                                        dash={[5, 5]}
+                                        cornerRadius={2}
+                                        opacity={0.5}
+                                    />
+                                    <Text
+                                        text={componentToPlace.name}
+                                        fontSize={10}
+                                        fill="#fff"
+                                        fontStyle="bold"
+                                        align="center"
+                                        width={widthPx}
+                                        x={-widthPx / 2}
+                                        y={-5}
+                                        opacity={0.7}
+                                    />
+                                </Group>
+                            );
+                        })()}
 
                         {/* Selection Marquee */}
                         {selectionRect && (

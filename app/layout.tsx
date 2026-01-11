@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Professional shop layout tool for cabinet and woodworking shops",
 }
 
+import AIAssistant from '@/components/AIAssistant'
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,6 +32,7 @@ export default function RootLayout({
       >
         <Providers>
           {children}
+          <AIAssistant />
         </Providers>
       </body>
     </html>

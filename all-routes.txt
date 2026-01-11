@@ -1,0 +1,16 @@
+
+Path
+----
+api\buildings\[id]
+api\buildings\[id]\entry-points\[entryPointI…
+api\buildings\[id]\layouts\[layoutId]
+api\layouts\[id]
+api\layouts\[layoutId]
+api\layouts\[layoutId]\material-flow-paths\[…
+buildings\[id]
+buildings\[id]\layouts\[layoutId]
+editor\[layoutId]
+sign-in\[[...sign-in]]
+sign-up\[[...sign-up]]
+sop\[id]
+
