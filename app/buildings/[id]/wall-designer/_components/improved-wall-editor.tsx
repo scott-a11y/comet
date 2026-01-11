@@ -1111,29 +1111,29 @@ export function ImprovedWallEditor({
                     {/* Actions Group */}
                     <div className={`flex flex-col gap-2 ${(toolbarDock === 'top-center' || toolbarDock === 'bottom-center') ? 'border-l border-slate-700 pl-8' : ''}`}>
                         <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Actions</label>
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="flex gap-1.5 flex-wrap">
                             <button
                                 type="button"
                                 onClick={() => setShowQuickDimension(true)}
-                                className="px-3 py-1.5 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-50 text-[11px] font-bold rounded-lg transition-all border border-emerald-500/30 whitespace-nowrap"
+                                className="px-2 py-1 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-50 text-[10px] font-bold rounded transition-all border border-emerald-500/30 whitespace-nowrap"
                             >
-                                📐 RECTANGLE
+                                📐 RECT
                             </button>
                             <button
                                 type="button"
                                 onClick={handleCloseLoop}
                                 disabled={vertices.length < 3}
-                                className="px-3 py-1.5 bg-purple-700/80 hover:bg-purple-600 text-purple-50 text-[11px] font-bold rounded-lg transition-all border border-purple-500/30 disabled:opacity-30 whitespace-nowrap"
+                                className="px-2 py-1 bg-purple-700/80 hover:bg-purple-600 text-purple-50 text-[10px] font-bold rounded transition-all border border-purple-500/30 disabled:opacity-30 whitespace-nowrap"
                             >
-                                🔗 CLOSE LOOP
+                                🔗 LOOP
                             </button>
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={uploadingPDF}
-                                className="px-3 py-1.5 bg-blue-700/80 hover:bg-blue-600 text-blue-50 text-[11px] font-bold rounded-lg transition-all border border-blue-500/30 disabled:opacity-30 whitespace-nowrap"
+                                className="px-2 py-1 bg-blue-700/80 hover:bg-blue-600 text-blue-50 text-[10px] font-bold rounded transition-all border border-blue-500/30 disabled:opacity-30 whitespace-nowrap"
                             >
-                                {uploadingPDF ? '⏳ LOADING...' : '📄 UPLOAD PDF'}
+                                {uploadingPDF ? '⏳' : '📄 PDF'}
                             </button>
                             <input
                                 ref={fileInputRef}
