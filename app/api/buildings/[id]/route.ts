@@ -39,3 +39,31 @@ export async function GET(
         return apiError('Failed to fetch building', 500);
     }
 }
+
+export async function PATCH(
+    request: Request,
+    { params }: { params: { id: string } }
+) {
+    try {
+        const buildingId = parseInt(params.id);
+        const body = await request.json();
+
+        if (isNaN(buildingId)) {
+            return apiError('Invalid building ID', 400);
+        }
+
+        const building = await prisma.shopBuilding.update({
+            where: { id: buildingId },
+            data: {
+                floorGeometry: body.floorGeometry,
+                floorScaleFtPerUnit: body.floorScaleFtPerUnit,
+                // Any other fields that might be updated
+            }
+        });
+
+        return apiSuccess(building);
+    } catch (error) {
+        console.error('Error updating building:', error);
+        return apiError('Failed to update building', 500);
+    }
+}

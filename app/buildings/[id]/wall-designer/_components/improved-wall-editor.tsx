@@ -82,6 +82,7 @@ export function ImprovedWallEditor({
     const [mode, setMode] = useState<Mode>('DRAW');
     const [vertices, setVertices] = useState<BuildingVertex[]>([]);
     const [segments, setSegments] = useState<BuildingWallSegment[]>([]);
+    const [lastWallVertexId, setLastWallVertexId] = useState<string | null>(null);
 
     // History state
     const [history, setHistory] = useState<Array<{
@@ -456,8 +457,10 @@ export function ImprovedWallEditor({
             setSelectedOpeningId(null);
             setSelectedEntryId(null);
             setSelectedRunId(null);
+            setSelectedComponentId(null);
         }
 
+        // Logic for specialized design tools
         if (mode === 'DRAW' || mode === 'EDIT' || mode === 'DOOR' || mode === 'WINDOW' || mode === 'POWER' || mode === 'ELECTRIC_RUN') {
             // Handle door/window placement
             if (mode === 'DOOR' || mode === 'WINDOW') {
@@ -481,14 +484,16 @@ export function ImprovedWallEditor({
                     const v2 = vertices.find(v => v.id === clickedSegment.b)!;
                     const L2 = (v2.x - v1.x) ** 2 + (v2.y - v1.y) ** 2;
                     const t = ((pos.x - v1.x) * (v2.x - v1.x) + (pos.y - v1.y) * (v2.y - v1.y)) / L2;
+                    const opId = newId('op');
                     const opening: BuildingOpening = {
-                        id: newId('op'),
+                        id: opId,
                         segmentId: clickedSegment.id,
                         type: mode === 'DOOR' ? 'door' : 'window',
                         position: Math.max(0, Math.min(1, t)),
                         width: mode === 'DOOR' ? 3 : 4, // default widths in feet
                     };
                     setOpenings(prev => [...prev, opening]);
+                    setSelectedOpeningId(opId); // Auto-select for feedback
                 }
                 return;
             }
@@ -496,16 +501,18 @@ export function ImprovedWallEditor({
             // Handle power entry placement
             if (mode === 'POWER') {
                 pushHistory();
+                const entryId = newId('ee');
                 const entry: ElectricalEntry = {
-                    id: newId('ee'),
+                    id: entryId,
                     x: snappedPos.x,
                     y: snappedPos.y,
                     type: 'single-phase',
-                    voltage: 240,
-                    amps: 200,
+                    voltage: 120,
+                    amps: 20
                 };
                 setElectricalEntries(prev => [...prev, entry]);
-                setMode('SELECT'); // Return to select after placing
+                setSelectedEntryId(entryId); // Auto-select for feedback
+                // Don't switch to SELECT mode immediately to allow placing multiple entries
                 return;
             }
 
@@ -544,34 +551,38 @@ export function ImprovedWallEditor({
 
             if (mode === 'DRAW') {
                 if (nearbyVertex) {
-                    if (vertices.length > 0) {
-                        const lastVertex = vertices[vertices.length - 1];
-                        if (lastVertex.id !== nearbyVertex.id) {
+                    if (lastWallVertexId) {
+                        if (lastWallVertexId !== nearbyVertex.id) {
                             pushHistory();
                             const newSegment: BuildingWallSegment = {
                                 id: newId('s'),
-                                a: lastVertex.id,
+                                a: lastWallVertexId,
                                 b: nearbyVertex.id,
                                 material: wallMaterial,
                                 thickness: parseFloat(wallThickness),
                             };
                             setSegments(prev => [...prev, newSegment]);
+                            setLastWallVertexId(nearbyVertex.id);
                         }
+                    } else {
+                        // Start a chain from an existing vertex
+                        setLastWallVertexId(nearbyVertex.id);
                     }
                 } else {
                     pushHistory();
+                    const snappedPos = snapToGridEnabled ? snapToGrid(pos, GRID_SIZE) : pos;
                     const newVertex: BuildingVertex = {
                         id: newId('v'),
                         x: snappedPos.x,
                         y: snappedPos.y,
                     };
+
                     setVertices(prev => {
                         const updated = [...prev, newVertex];
-                        if (prev.length > 0) {
-                            const lastVertex = prev[prev.length - 1];
+                        if (lastWallVertexId) {
                             const newSegment: BuildingWallSegment = {
                                 id: newId('s'),
-                                a: lastVertex.id,
+                                a: lastWallVertexId,
                                 b: newVertex.id,
                                 material: wallMaterial,
                                 thickness: parseFloat(wallThickness),
@@ -580,24 +591,30 @@ export function ImprovedWallEditor({
                         }
                         return updated;
                     });
+                    setLastWallVertexId(newVertex.id);
                 }
             }
+
         } else if (mode === 'COMPONENT' && componentToPlace) {
             // Handle component placement
             pushHistory();
+            const compId = newId('comp');
             const newComponent = createComponentFromTemplate(
                 componentToPlace,
                 snappedPos.x,
                 snappedPos.y,
                 componentRotation
             );
+            // Ensure unique ID for this instance
+            newComponent.id = compId;
             setComponents(prev => [...prev, newComponent]);
+            setSelectedComponentId(compId); // Auto-select for feedback
             // Don't clear componentToPlace to allow multiple placements
         } else if (mode === 'PAN') {
             setIsDragging(true);
             setDragStart(pos);
-        } else if (mode === 'SELECT') {
-            setIsDragging(true);
+        } else if (mode === 'SELECT' && e.target === e.target.getStage()) {
+            // Only start marquee if clicking the stage background
             setDragStart(pos);
             setSelectionRect({ x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y });
         }
@@ -642,31 +659,83 @@ export function ImprovedWallEditor({
             const y1 = Math.min(selectionRect.y1, selectionRect.y2);
             const y2 = Math.max(selectionRect.y1, selectionRect.y2);
 
-            // Simple box selection: find first vertex within rect
+            // Prioritize selection: Vertex > Entry > Component > Segment > Opening > Run
+            let selectedId: string | null = null;
+            let selectedType: 'vertex' | 'entry' | 'component' | 'segment' | 'opening' | 'run' | null = null;
+
             const foundVertex = vertices.find(v => v.x >= x1 && v.x <= x2 && v.y >= y1 && v.y <= y2);
             if (foundVertex) {
-                setSelectedVertexId(foundVertex.id);
-                setSelectedSegmentId(null);
-                setSelectedOpeningId(null);
-                setSelectedEntryId(null);
-                setSelectedRunId(null);
+                selectedId = foundVertex.id;
+                selectedType = 'vertex';
             } else {
-                // Check electrical entries
                 const foundEntry = electricalEntries.find(ee => ee.x >= x1 && ee.x <= x2 && ee.y >= y1 && ee.y <= y2);
                 if (foundEntry) {
-                    setSelectedEntryId(foundEntry.id);
-                    setSelectedVertexId(null);
-                    setSelectedSegmentId(null);
-                    setSelectedOpeningId(null);
-                    setSelectedRunId(null);
+                    selectedId = foundEntry.id;
+                    selectedType = 'entry';
+                } else {
+                    const foundComp = components.find(c => c.x >= x1 && c.x <= x2 && c.y >= y1 && c.y <= y2);
+                    if (foundComp) {
+                        selectedId = foundComp.id;
+                        selectedType = 'component';
+                    } else {
+                        const foundSegment = segments.find(seg => {
+                            const v1 = vertices.find(v => v.id === seg.a);
+                            const v2 = vertices.find(v => v.id === seg.b);
+                            if (!v1 || !v2) return false;
+                            // Check if both endpoints are in the marquee for a wall to be "selected"
+                            return (v1.x >= x1 && v1.x <= x2 && v1.y >= y1 && v1.y <= y2) ||
+                                (v2.x >= x1 && v2.x <= x2 && v2.y >= y1 && v2.y <= y2);
+                        });
+                        if (foundSegment) {
+                            selectedId = foundSegment.id;
+                            selectedType = 'segment';
+                        } else {
+                            const foundOpening = openings.find(op => {
+                                const seg = segments.find(s => s.id === op.segmentId);
+                                if (!seg) return false;
+                                const v1 = vertices.find(v => v.id === seg.a);
+                                const v2 = vertices.find(v => v.id === seg.b);
+                                if (!v1 || !v2) return false;
+
+                                const dx = v2.x - v1.x;
+                                const dy = v2.y - v1.y;
+                                const centerX = v1.x + dx * op.position;
+                                const centerY = v1.y + dy * op.position;
+
+                                // Simple check: is the center of the opening within the marquee?
+                                return centerX >= x1 && centerX <= x2 && centerY >= y1 && centerY <= y2;
+                            });
+                            if (foundOpening) {
+                                selectedId = foundOpening.id;
+                                selectedType = 'opening';
+                            } else {
+                                const foundRun = systemRuns.find(run => {
+                                    // Check if any point of the run is within the marquee
+                                    return run.points.some((p: { x: number, y: number }) => p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2);
+                                });
+                                if (foundRun) {
+                                    selectedId = foundRun.id;
+                                    selectedType = 'run';
+                                }
+                            }
+                        }
+                    }
                 }
             }
+
+            // Apply selection based on priority
+            setSelectedVertexId(selectedType === 'vertex' ? selectedId : null);
+            setSelectedEntryId(selectedType === 'entry' ? selectedId : null);
+            setSelectedComponentId(selectedType === 'component' ? selectedId : null);
+            setSelectedSegmentId(selectedType === 'segment' ? selectedId : null);
+            setSelectedOpeningId(selectedType === 'opening' ? selectedId : null);
+            setSelectedRunId(selectedType === 'run' ? selectedId : null);
         }
 
         setIsDragging(false);
         setDragStart(null);
         setSelectionRect(null);
-    }, [mode, selectionRect, dragStart, vertices, electricalEntries]);
+    }, [mode, selectionRect, dragStart, vertices, electricalEntries, components, segments, openings, systemRuns]);
 
     // Handle wheel (zoom)
     const handleWheel = useCallback((e: any) => {
@@ -881,6 +950,10 @@ export function ImprovedWallEditor({
                     setActiveRunPoints([]);
                     return;
                 }
+                if (mode === 'DRAW') {
+                    setLastWallVertexId(null);
+                    return;
+                }
                 setSelectedVertexId(null);
                 setSelectedSegmentId(null);
                 setSelectedOpeningId(null);
@@ -1085,16 +1158,38 @@ export function ImprovedWallEditor({
                     {/* Toolbar Content - Hidden with CSS when collapsed */}
                     <div className={`flex flex-col gap-4 transition-all duration-300 ${sidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
 
-                        {/* Tools Group */}
+                        {/* Setup & Import Group - High Priority */}
+                        <div className="flex flex-col gap-2 bg-slate-900/40 p-2 rounded-lg border border-slate-700/50">
+                            <label className="text-[9px] text-blue-400 uppercase font-black tracking-widest">1. Setup & Import</label>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploadingPDF}
+                                    className="flex-1 py-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-100 text-[10px] font-bold rounded-lg border border-blue-500/30 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {uploadingPDF ? '⏳ Importing...' : '📄 Import Blueprint'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowQuickDimension(true)}
+                                    className="flex-1 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-100 text-[10px] font-bold rounded-lg border border-emerald-500/30 transition-all flex items-center justify-center gap-2"
+                                >
+                                    📐 Generate Layout
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Design Tools Group */}
                         <div className="flex flex-col gap-2">
-                            <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Design Tools</label>
+                            <label className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">2. Design Tools</label>
                             <div className="flex gap-2 flex-wrap">
                                 <button
                                     type="button"
                                     onClick={() => setMode('DRAW')}
                                     className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all border ${mode === 'DRAW' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'}`}
                                 >
-                                    ✏️ DRAW
+                                    ✏️ Draw New Wall
                                 </button>
                                 <button
                                     type="button"
@@ -1173,26 +1268,11 @@ export function ImprovedWallEditor({
                             <div className="flex gap-1.5 flex-wrap">
                                 <button
                                     type="button"
-                                    onClick={() => setShowQuickDimension(true)}
-                                    className="px-2 py-1 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-50 text-[10px] font-bold rounded transition-all border border-emerald-500/30 whitespace-nowrap"
-                                >
-                                    📐 RECT
-                                </button>
-                                <button
-                                    type="button"
                                     onClick={handleCloseLoop}
                                     disabled={vertices.length < 3}
                                     className="px-2 py-1 bg-purple-700/80 hover:bg-purple-600 text-purple-50 text-[10px] font-bold rounded transition-all border border-purple-500/30 disabled:opacity-30 whitespace-nowrap"
                                 >
-                                    🔗 LOOP
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploadingPDF}
-                                    className="px-2 py-1 bg-blue-700/80 hover:bg-blue-600 text-blue-50 text-[10px] font-bold rounded transition-all border border-blue-500/30 disabled:opacity-30 whitespace-nowrap"
-                                >
-                                    {uploadingPDF ? '⏳' : '📄 PDF'}
+                                    🔗 CLOSE LOOP
                                 </button>
                                 <input
                                     ref={fileInputRef}
@@ -1473,187 +1553,6 @@ export function ImprovedWallEditor({
 
             {/* Canvas Container - Fills remaining space */}
             <div className={`flex-1 relative ${toolbarDock !== 'left-bar' ? 'w-full h-full absolute inset-0' : ''}`}>
-                <Stage
-                    width={stageSize.width}
-                    height={stageSize.height}
-                    scaleX={scale}
-                    scaleY={scale}
-                    x={pan.x}
-                    y={pan.y}
-                    draggable={mode === 'PAN'}
-                    onWheel={(e) => {
-                        e.evt.preventDefault();
-                        const scaleBy = 1.05;
-                        const stage = e.target.getStage();
-                        if (!stage) return;
-
-                        const oldScale = stage.scaleX();
-                        const pointer = stage.getPointerPosition();
-                        if (!pointer) return;
-
-                        const mousePointTo = {
-                            x: (pointer.x - stage.x()) / oldScale,
-                            y: (pointer.y - stage.y()) / oldScale,
-                        };
-
-                        const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
-                        setScale(newScale);
-
-                        const newPos = {
-                            x: pointer.x - mousePointTo.x * newScale,
-                            y: pointer.y - mousePointTo.y * newScale,
-                        };
-                        setPan(newPos);
-                    }}
-                    onDragEnd={(e) => {
-                        setPan({ x: e.target.x(), y: e.target.y() });
-                    }}
-                    onMouseDown={(e) => {
-                        if (mode !== 'DRAW' && mode !== 'SELECT') return;
-
-                        const pos = getWorldPos(e);
-                        if (!pos) return;
-
-                        if (mode === 'DRAW') {
-                            // Check if clicking near existing vertex
-                            const nearVertex = vertices.find(v =>
-                                distance(v, pos) < SNAP_DIST / scale
-                            );
-
-                            if (nearVertex) {
-                                // Connect to existing vertex
-                                if (vertices.length > 0) {
-                                    const lastVertex = vertices[vertices.length - 1];
-                                    if (lastVertex.id !== nearVertex.id) {
-                                        pushHistory();
-                                        setSegments([...segments, {
-                                            id: newId('s'),
-                                            a: lastVertex.id,
-                                            b: nearVertex.id,
-                                            material: 'drywall',
-                                            thickness: 6,
-                                        }]);
-                                    }
-                                }
-                            } else {
-                                // Create new vertex
-                                const snappedPos = snapToGridEnabled ? snapToGrid(pos) : pos;
-                                const newVertex: BuildingVertex = {
-                                    id: newId('v'),
-                                    x: snappedPos.x,
-                                    y: snappedPos.y,
-                                };
-
-                                pushHistory();
-                                setVertices([...vertices, newVertex]);
-
-                                // Auto-connect to previous vertex
-                                if (vertices.length > 0) {
-                                    const lastVertex = vertices[vertices.length - 1];
-                                    setSegments([...segments, {
-                                        id: newId('s'),
-                                        a: lastVertex.id,
-                                        b: newVertex.id,
-                                        material: 'drywall',
-                                        thickness: 6,
-                                    }]);
-                                }
-                            }
-                        }
-                    }}
-                    onMouseMove={(e) => {
-                        if (mode === 'DRAW') {
-                            const pos = getWorldPos(e);
-                            if (pos) {
-                                const snappedPos = snapToGridEnabled ? snapToGrid(pos) : pos;
-                                setGhostPoint(snappedPos);
-                            }
-                        }
-                    }}
-                    onMouseLeave={() => {
-                        setGhostPoint(null);
-                    }}
-                    style={{
-                        cursor: mode === 'DRAW' ? 'crosshair' : mode === 'PAN' ? 'grab' : 'default',
-                    }}
-                >
-                    {/* Blueprint Background Layer */}
-                    {blueprintImage && (
-                        <Layer>
-                            <Group
-                                x={blueprintPosition.x}
-                                y={blueprintPosition.y}
-                                scaleX={blueprintScale}
-                                scaleY={blueprintScale}
-                                rotation={blueprintRotation}
-                                opacity={blueprintOpacity}
-                            >
-                                <BlueprintImage src={blueprintImage} />
-                            </Group>
-                        </Layer>
-                    )}
-
-                    {/* Main Drawing Layer - Walls, Components, etc. */}
-                    <Layer>
-                        {/* Render wall segments */}
-                        {segments.map(segment => {
-                            const vertexA = vertices.find(v => v.id === segment.a);
-                            const vertexB = vertices.find(v => v.id === segment.b);
-                            if (!vertexA || !vertexB) return null;
-
-                            return (
-                                <Line
-                                    key={segment.id}
-                                    points={[vertexA.x, vertexA.y, vertexB.x, vertexB.y]}
-                                    stroke="#3b82f6"
-                                    strokeWidth={segment.thickness || 6}
-                                    lineCap="round"
-                                    lineJoin="round"
-                                />
-                            );
-                        })}
-
-                        {/* Render vertices */}
-                        {vertices.map(vertex => (
-                            <Circle
-                                key={vertex.id}
-                                x={vertex.x}
-                                y={vertex.y}
-                                radius={8}
-                                fill="#60a5fa"
-                                stroke="#1e40af"
-                                strokeWidth={2}
-                            />
-                        ))}
-
-                        {/* Ghost point for DRAW mode */}
-                        {ghostPoint && mode === 'DRAW' && (
-                            <>
-                                <Circle
-                                    x={ghostPoint.x}
-                                    y={ghostPoint.y}
-                                    radius={6}
-                                    fill="#94a3b8"
-                                    opacity={0.5}
-                                />
-                                {vertices.length > 0 && (
-                                    <Line
-                                        points={[
-                                            vertices[vertices.length - 1].x,
-                                            vertices[vertices.length - 1].y,
-                                            ghostPoint.x,
-                                            ghostPoint.y,
-                                        ]}
-                                        stroke="#94a3b8"
-                                        strokeWidth={2}
-                                        dash={[5, 5]}
-                                        opacity={0.5}
-                                    />
-                                )}
-                            </>
-                        )}
-                    </Layer>
-                </Stage>
 
                 {/* Stats */}
                 <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
@@ -1948,9 +1847,27 @@ export function ImprovedWallEditor({
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onWheel={handleWheel}
+                    onMouseLeave={() => setGhostPoint(null)}
                     className="cursor-crosshair w-full h-full"
                 >
+                    {/* Blueprint Background Layer */}
+                    {blueprintImage && (
+                        <Layer>
+                            <Group
+                                x={blueprintPosition.x}
+                                y={blueprintPosition.y}
+                                scaleX={blueprintScale}
+                                scaleY={blueprintScale}
+                                rotation={blueprintRotation}
+                                opacity={blueprintOpacity}
+                            >
+                                <BlueprintImage src={blueprintImage} />
+                            </Group>
+                        </Layer>
+                    )}
+
                     <Layer>
+
                         {/* Grid */}
                         {showGrid && (
                             <>
@@ -1974,7 +1891,7 @@ export function ImprovedWallEditor({
                         )}
 
                         {/* Segments (walls) - with thickness visualization */}
-                        {segments.map(seg => {
+                        {layerVisibility.walls && segments.map(seg => {
                             const v1 = vertices.find(v => v.id === seg.a);
                             const v2 = vertices.find(v => v.id === seg.b);
                             if (!v1 || !v2) return null;
@@ -1995,14 +1912,17 @@ export function ImprovedWallEditor({
                                         strokeWidth={Math.max(thicknessPx, 6)}
                                         lineCap="round"
                                         lineJoin="round"
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                            e.cancelBubble = true;
                                             setSelectedSegmentId(seg.id);
                                             setSelectedVertexId(null);
                                             setSelectedOpeningId(null);
                                             setSelectedEntryId(null);
                                             setSelectedRunId(null);
+                                            setSelectedComponentId(null);
                                         }}
-                                        onDragStart={() => {
+                                        onDragStart={(e) => {
+                                            e.cancelBubble = true;
                                             pushHistory();
                                             setSelectedSegmentId(seg.id);
                                         }}
@@ -2068,7 +1988,7 @@ export function ImprovedWallEditor({
                         })}
 
                         {/* Openings (Doors/Windows) */}
-                        {openings.map(op => {
+                        {layerVisibility.openings && openings.map(op => {
                             const seg = segments.find(s => s.id === op.segmentId);
                             if (!seg) return null;
                             const v1 = vertices.find(v => v.id === seg.a);
@@ -2094,12 +2014,14 @@ export function ImprovedWallEditor({
                             return (
                                 <Group
                                     key={op.id}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.cancelBubble = true;
                                         setSelectedOpeningId(op.id);
                                         setSelectedSegmentId(null);
                                         setSelectedVertexId(null);
                                         setSelectedEntryId(null);
                                         setSelectedRunId(null);
+                                        setSelectedComponentId(null);
                                     }}
                                 >
                                     {/* Opening Gap background (to clear wall lines visually, though we draw over) */}
@@ -2149,19 +2071,21 @@ export function ImprovedWallEditor({
                         })}
 
                         {/* Electrical Entries */}
-                        {electricalEntries.map(ee => {
+                        {layerVisibility.electrical && electricalEntries.map(ee => {
                             const isSelected = ee.id === selectedEntryId;
                             return (
                                 <Group
                                     key={ee.id}
                                     x={ee.x}
                                     y={ee.y}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.cancelBubble = true;
                                         setSelectedEntryId(ee.id);
                                         setSelectedOpeningId(null);
                                         setSelectedSegmentId(null);
                                         setSelectedVertexId(null);
                                         setSelectedRunId(null);
+                                        setSelectedComponentId(null);
                                     }}
                                 >
                                     <Circle
@@ -2189,18 +2113,20 @@ export function ImprovedWallEditor({
                         })}
 
                         {/* System Runs (Electrical Runs) */}
-                        {systemRuns.map(run => {
+                        {layerVisibility.electrical && systemRuns.map(run => {
                             const isSelected = run.id === selectedRunId;
                             const points = run.points.flatMap((p: any) => [p.x, p.y]);
                             return (
                                 <Group
                                     key={run.id}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.cancelBubble = true;
                                         setSelectedRunId(run.id);
                                         setSelectedEntryId(null);
                                         setSelectedOpeningId(null);
                                         setSelectedSegmentId(null);
                                         setSelectedVertexId(null);
+                                        setSelectedComponentId(null);
                                     }}
                                 >
                                     {/* Glow effect */}
@@ -2227,6 +2153,32 @@ export function ImprovedWallEditor({
                             );
                         })}
 
+                        {/* DRAW mode placement ghost */}
+                        {mode === 'DRAW' && ghostPoint && (
+                            <Group>
+                                <Circle
+                                    x={ghostPoint.x}
+                                    y={ghostPoint.y}
+                                    radius={4}
+                                    fill="#60a5fa"
+                                    opacity={0.6}
+                                />
+                                {lastWallVertexId && (() => {
+                                    const lastV = vertices.find(v => v.id === lastWallVertexId);
+                                    if (!lastV) return null;
+                                    return (
+                                        <Line
+                                            points={[lastV.x, lastV.y, ghostPoint.x, ghostPoint.y]}
+                                            stroke="#60a5fa"
+                                            strokeWidth={2}
+                                            dash={[5, 5]}
+                                            opacity={0.5}
+                                        />
+                                    );
+                                })()}
+                            </Group>
+                        )}
+
                         {/* Components (Furniture, Machinery, etc.) */}
                         {layerVisibility.components && components.map(comp => {
                             const isSelected = comp.id === selectedComponentId;
@@ -2239,7 +2191,8 @@ export function ImprovedWallEditor({
                                     x={comp.x}
                                     y={comp.y}
                                     rotation={comp.rotation}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.cancelBubble = true;
                                         setSelectedComponentId(comp.id);
                                         setSelectedVertexId(null);
                                         setSelectedSegmentId(null);
