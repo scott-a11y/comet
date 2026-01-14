@@ -149,7 +149,7 @@ export default async function LayoutCanvasPage({ params }: PageProps) {
             buildingWidth={layout.shopBuilding.widthFt || 100}
             buildingDepth={layout.shopBuilding.depthFt || 100}
             entryPoints={layout.shopBuilding.entryPoints || []}
-            materialFlowPaths={layout.materialFlowPaths || []}
+            materialFlowPaths={layout.materialFlowPaths as any || []}
             equipmentPositions={layout.equipmentPositions.map((pos: any) => ({
               id: pos.id,
               x: pos.x,

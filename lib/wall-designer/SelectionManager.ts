@@ -10,17 +10,7 @@ export type SelectionMode =
     | 'magic-wand'  // Select similar elements
     | 'paint';      // Brush to select
 
-export interface Point {
-    x: number;
-    y: number;
-}
-
-export interface Bounds {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+import { Point, Bounds } from './types';
 
 export interface SelectableElement {
     id: string;

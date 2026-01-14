@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Konva from 'konva';
 import { Stage, Layer, Line, Circle, Text, Group, Rect } from 'react-konva';
 import useImage from 'use-image';
-import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment } from '@/lib/types/building-geometry';
+import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment, SystemRun } from '@/lib/types/building-geometry';
 import { validateSimplePolygon } from '@/lib/geometry/polygon';
 import { dist, segmentExists, pointToSegmentDistance } from '@/lib/canvas-utils';
 import { useServerAction } from 'zsa-react';
@@ -70,7 +70,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
   const [segments, setSegments] = useState<BuildingWallSegment[]>(initialGeometry?.segments ?? []);
   const [scaleFtPerUnit, setScaleFtPerUnit] = useState<number | null>(initialScaleFtPerUnit ?? null);
   const [ringVertexIds, setRingVertexIds] = useState<string[] | undefined>(initialGeometry?.ringVertexIds);
-  const [equipment, setEquipment] = useState<NonNullable<BuildingFloorGeometry['equipment']>>(initialGeometry?.equipment ?? []);
+  const [components, setComponents] = useState<NonNullable<BuildingFloorGeometry['components']>>(initialGeometry?.components ?? []);
   const [systemRuns, setSystemRuns] = useState<NonNullable<BuildingFloorGeometry['systemRuns']>>(initialGeometry?.systemRuns ?? []);
   const [drawingRunPoints, setDrawingRunPoints] = useState<Array<{ x: number; y: number }>>([]);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
@@ -476,6 +476,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
       // Fallback placement
       const newEq = {
         id: newId('eq'),
+        category: 'machinery' as const,
         name: "Mock Machine",
         x: 0,
         y: 0,
@@ -483,7 +484,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
         depth: 3 / scaleFtPerUnit,
         rotation: 0
       };
-      setEquipment(prev => [...prev, newEq]);
+      setComponents(prev => [...prev, newEq]);
       return;
     }
 
@@ -501,6 +502,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
 
       const newEq = {
         id: newId('eq'),
+        category: 'machinery' as const,
         name: "AI Machine",
         x: unitX,
         y: unitY,
@@ -508,7 +510,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
         depth: (mockSpecs.dimensions.depth) / scaleFtPerUnit,
         rotation: rotation || 0
       };
-      setEquipment(prev => [...prev, newEq]);
+      setComponents(prev => [...prev, newEq]);
       toast.success("Machine placed!");
     }
   };
@@ -517,7 +519,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
     // Add a simple L-shaped duct for testing
     const newRun: NonNullable<BuildingFloorGeometry['systemRuns']>[0] = {
       id: newId('run'),
-      type: 'DUST',
+      type: 'DUST_COLLECTION',
       points: [{ x: 100, y: 100 }, { x: 300, y: 100 }, { x: 300, y: 250 }],
       diameter: 12
     };
@@ -725,7 +727,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
           // Commit run
           const newRun: NonNullable<BuildingFloorGeometry['systemRuns']>[0] = {
             id: newId('run'),
-            type: 'DUST',
+            type: 'DUST_COLLECTION',
             points: drawingRunPoints,
             diameter: 12 // Default
           };
@@ -838,12 +840,12 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
   }, [segments, vertexMap, mode, selectedSegmentId, scaleFtPerUnit, handleEditDragStart, deleteSegment, showMaterials]);
 
   const equipmentShapes = useMemo(() => {
-    return equipment.map(eq => (
+    return components.map(eq => (
       <Group key={eq.id} x={eq.x} y={eq.y} rotation={eq.rotation} draggable={mode === 'EDIT'}
         onDragEnd={(e) => {
           const nx = e.target.x();
           const ny = e.target.y();
-          setEquipment(prev => prev.map(item => item.id === eq.id ? { ...item, x: nx, y: ny } : item));
+          setComponents(prev => prev.map(item => item.id === eq.id ? { ...item, x: nx, y: ny } : item));
         }}
       >
         <Rect
@@ -865,7 +867,7 @@ export function WallEditor({ initialGeometry, initialScaleFtPerUnit, onChange }:
         />
       </Group>
     ));
-  }, [equipment, mode]);
+  }, [components, mode]);
 
   const vertexDots = useMemo(() => {
     return vertices.map((v) => (

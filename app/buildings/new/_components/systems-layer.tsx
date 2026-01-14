@@ -15,7 +15,7 @@ export const SystemsLayer = React.memo(function SystemsLayer({ runs }: Props) {
             {runs.map((run) => {
                 const flatPoints = run.points.flatMap(p => [p.x, p.y]);
 
-                if (run.type === 'DUST') {
+                if (run.type === 'DUST_COLLECTION') {
                     return (
                         <Line
                             key={run.id}
@@ -30,7 +30,7 @@ export const SystemsLayer = React.memo(function SystemsLayer({ runs }: Props) {
                     );
                 }
 
-                if (run.type === 'AIR') {
+                if (run.type === 'COMPRESSED_AIR') {
                     return (
                         <Line
                             key={run.id}

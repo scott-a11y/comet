@@ -202,6 +202,61 @@ export const COMPONENT_CATALOG: Record<ComponentCategory, ComponentTemplate[]> =
             metadata: {
                 notes: 'Movable storage'
             }
+        },
+        {
+            category: 'storage',
+            name: 'Heavy Duty Pallet Rack',
+            width: 8.5,
+            depth: 3.5,
+            height: 12,
+            color: '#FF4500',
+            metadata: {
+                notes: 'Standard industrial pallet racking'
+            }
+        },
+        {
+            category: 'storage',
+            name: 'Teardrop Racking (8ft)',
+            width: 8,
+            depth: 3.5,
+            height: 10,
+            color: '#FF8C00',
+            metadata: {
+                notes: 'Standard 8ft beam racking'
+            }
+        },
+        {
+            category: 'storage',
+            name: 'Cantilever Rack',
+            width: 6,
+            depth: 4,
+            height: 8,
+            color: '#4682B4',
+            metadata: {
+                notes: 'For lumber and pipe storage'
+            }
+        },
+        {
+            category: 'storage',
+            name: 'Industrial Wire Shelving',
+            width: 4,
+            depth: 1.5,
+            height: 6,
+            color: '#C0C0C0',
+            metadata: {
+                notes: 'Chrome wire shelving'
+            }
+        },
+        {
+            category: 'storage',
+            name: 'Small Parts Bin Rack',
+            width: 3,
+            depth: 1,
+            height: 6,
+            color: '#4169E1',
+            metadata: {
+                notes: 'Vertical bin organization'
+            }
         }
     ]
 };

@@ -3,7 +3,9 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment, Html } from "@react-three/drei";
 import { BuildingShell } from "./BuildingShell";
+import { ComponentModel } from "./ComponentModel";
 import { Suspense } from "react";
+import type { BuildingFloorGeometry } from "@/lib/types/building-geometry";
 
 import type { ShopBuilding, Equipment } from "@prisma/client";
 
@@ -95,6 +97,15 @@ export function Scene({ building }: SceneProps) {
                         </div>
                     </Html>
                 )}
+
+                {/* Components from Floor Geometry */}
+                {building.floorGeometry && (building.floorGeometry as any as BuildingFloorGeometry).components?.map((comp) => (
+                    <ComponentModel
+                        key={comp.id}
+                        item={comp}
+                        scaleFtPerUnit={building.floorScaleFtPerUnit || 1}
+                    />
+                ))}
 
                 {/* Environment preset for reflections */}
                 <Environment preset="warehouse" />

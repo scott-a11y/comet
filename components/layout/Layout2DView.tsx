@@ -105,8 +105,8 @@ export function Layout2DView({ building }: Layout2DViewProps) {
                         {building.equipment && building.equipment.map((eq) => {
                             const eqWidth = (eq.widthFt || 4) * scale;
                             const eqDepth = (eq.depthFt || 4) * scale;
-                            const x = (eq.xPos || 0) * scale;
-                            const y = (eq.yPos || 0) * scale;
+                            const x = ((eq as any).xPos || 0) * scale;
+                            const y = ((eq as any).yPos || 0) * scale;
 
                             return (
                                 <g key={eq.id}>

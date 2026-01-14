@@ -12,10 +12,7 @@ export type SnapType =
     | 'perpendicular' // Snap perpendicular to lines
     | 'tangent';      // Snap tangent to curves
 
-export interface Point {
-    x: number;
-    y: number;
-}
+import { Point } from './types';
 
 export interface SnapPoint extends Point {
     type: SnapType;

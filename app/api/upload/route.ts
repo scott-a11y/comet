@@ -9,17 +9,24 @@ export async function POST(request: NextRequest) {
       body,
       request,
       onBeforeGenerateToken: async (pathname) => {
-        // Accept both PDFs and images
-        const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+        // Allow PDFs, images, and 3D models
+        const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.glb', '.gltf'];
         const hasValidExtension = validExtensions.some(ext => pathname.toLowerCase().endsWith(ext));
 
         if (!hasValidExtension) {
-          throw new Error('Only PDF and image files (PNG, JPG, JPEG, WEBP) are allowed');
+          throw new Error('Only PDF, image files, or 3D models (GLB, GLTF) are allowed');
         }
 
         return {
-          allowedContentTypes: ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'],
-          maximumSizeInBytes: 10 * 1024 * 1024, // 10MB
+          allowedContentTypes: [
+            'application/pdf',
+            'image/png',
+            'image/jpeg',
+            'image/webp',
+            'model/gltf-binary',
+            'model/gltf+json'
+          ],
+          maximumSizeInBytes: 30 * 1024 * 1024, // 30MB for 3D models
           addRandomSuffix: true,
           allowOverwrite: true,
         };

@@ -7,6 +7,7 @@ import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment, Buildi
 import { COMPONENT_CATALOG, createComponentFromTemplate, type ComponentTemplate } from '@/lib/wall-designer/component-catalog';
 import { convertPDFToImage, validatePDFFile } from '@/lib/wall-designer/pdf-upload-handler';
 import { analyzeBlueprintWithAI, validateAnalysisResult } from '@/lib/wall-designer/blueprint-analyzer';
+import { upload } from '@vercel/blob/client';
 
 interface Props {
     buildingWidth?: number;
@@ -180,6 +181,8 @@ export function ImprovedWallEditor({
     const [sketchupInput, setSketchupInput] = useState('');
     const [showSketchupInput, setShowSketchupInput] = useState(false);
     const sketchupInputRef = useRef<HTMLInputElement>(null);
+    const [uploadingModel, setUploadingModel] = useState(false);
+    const modelInputRef = useRef<HTMLInputElement>(null);
 
     // Quick dimension input
     const [showQuickDimension, setShowQuickDimension] = useState(false);
@@ -347,6 +350,35 @@ export function ImprovedWallEditor({
             setUploadingPDF(false);
         }
     }, []);
+
+    const handleModelUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !selectedComponentId) return;
+
+        setUploadingModel(true);
+        try {
+            const newBlob = await upload(file.name, file, {
+                access: 'public',
+                handleUploadUrl: '/api/upload',
+            });
+
+            setComponents(prev => prev.map(c =>
+                c.id === selectedComponentId ? {
+                    ...c,
+                    metadata: {
+                        ...c.metadata,
+                        notes: `model:${newBlob.url}`
+                    }
+                } : c
+            ));
+        } catch (error) {
+            console.error('Model upload error:', error);
+            alert('Failed to upload model');
+        } finally {
+            setUploadingModel(false);
+            if (modelInputRef.current) modelInputRef.current.value = '';
+        }
+    }, [selectedComponentId]);
 
     // Handle blueprint analysis
     const [analyzing, setAnalyzing] = useState(false);
@@ -1832,6 +1864,209 @@ export function ImprovedWallEditor({
                             </div>
                         </div>
                     )}
+
+                    {/* Selected Component Properties */}
+                    {selectedComponentId && (
+                        <div className="bg-slate-800/95 backdrop-blur-sm rounded-lg border border-green-500/50 p-4 shadow-xl text-sm w-72 animate-in slide-in-from-left duration-200">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="font-bold text-green-400 uppercase tracking-wider text-xs flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                    Component Details
+                                </h4>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedComponentId(null)}
+                                    className="text-slate-500 hover:text-white transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <div className="space-y-5">
+                                <div className="space-y-1.5">
+                                    <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-tight">Name</label>
+                                    <input
+                                        type="text"
+                                        value={components.find(c => c.id === selectedComponentId)?.name || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setComponents(prev => prev.map(c =>
+                                                c.id === selectedComponentId ? { ...c, name: val } : c
+                                            ));
+                                        }}
+                                        className="w-full bg-slate-900/80 border border-slate-700/50 rounded-lg px-3 py-2 text-white focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all shadow-inner"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-tight">Width (ft)</label>
+                                        <input
+                                            type="number"
+                                            value={components.find(c => c.id === selectedComponentId)?.width || 0}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                if (!isNaN(val)) {
+                                                    setComponents(prev => prev.map(c =>
+                                                        c.id === selectedComponentId ? { ...c, width: val } : c
+                                                    ));
+                                                }
+                                            }}
+                                            className="w-full bg-slate-900/80 border border-slate-700/50 rounded-lg px-3 py-2 text-white font-mono text-center focus:border-blue-500/50 outline-none transition-all"
+                                            step="0.5"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-tight">Depth (ft)</label>
+                                        <input
+                                            type="number"
+                                            value={components.find(c => c.id === selectedComponentId)?.depth || 0}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                if (!isNaN(val)) {
+                                                    setComponents(prev => prev.map(c =>
+                                                        c.id === selectedComponentId ? { ...c, depth: val } : c
+                                                    ));
+                                                }
+                                            }}
+                                            className="w-full bg-slate-900/80 border border-slate-700/50 rounded-lg px-3 py-2 text-white font-mono text-center focus:border-blue-500/50 outline-none transition-all"
+                                            step="0.5"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-tight">Height (ft)</label>
+                                    <div className="flex gap-3 items-center">
+                                        <input
+                                            type="range"
+                                            min="0.5"
+                                            max="20"
+                                            step="0.5"
+                                            value={components.find(c => c.id === selectedComponentId)?.height || 5}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                setComponents(prev => prev.map(c =>
+                                                    c.id === selectedComponentId ? { ...c, height: val } : c
+                                                ));
+                                            }}
+                                            className="flex-1 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                                        />
+                                        <input
+                                            type="number"
+                                            value={components.find(c => c.id === selectedComponentId)?.height || 5}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                if (!isNaN(val)) {
+                                                    setComponents(prev => prev.map(c =>
+                                                        c.id === selectedComponentId ? { ...c, height: val } : c
+                                                    ));
+                                                }
+                                            }}
+                                            className="w-16 bg-slate-900/80 border border-slate-700/50 rounded-lg px-2 py-1.5 text-white font-mono text-center outline-none"
+                                            step="0.5"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 pt-2 border-t border-slate-700/50">
+                                    <label className="block text-[10px] text-slate-500 uppercase font-bold tracking-tight flex items-center justify-between">
+                                        Custom Model URL
+                                        <span className="text-[8px] bg-slate-700 px-1 rounded text-slate-400">.GLB ONLY</span>
+                                    </label>
+                                    <div className="relative group">
+                                        <input
+                                            type="text"
+                                            placeholder="https://example.com/item.glb"
+                                            value={(() => {
+                                                const notes = components.find(c => c.id === selectedComponentId)?.metadata?.notes || '';
+                                                return notes.startsWith('model:') ? notes.replace('model:', '').trim() : '';
+                                            })()}
+                                            onChange={(e) => {
+                                                const val = e.target.value.trim();
+                                                setComponents(prev => prev.map(c =>
+                                                    c.id === selectedComponentId ? {
+                                                        ...c,
+                                                        metadata: {
+                                                            ...c.metadata,
+                                                            notes: val ? `model:${val}` : ''
+                                                        }
+                                                    } : c
+                                                ));
+                                            }}
+                                            className="w-full bg-slate-900/80 border border-slate-700/50 rounded-lg px-3 py-2 text-white text-[11px] focus:border-green-500/50 outline-none transition-all placeholder:text-slate-700 font-mono"
+                                        />
+                                        <div className="absolute right-2 top-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {components.find(c => c.id === selectedComponentId)?.metadata?.notes?.startsWith('model:') && (
+                                                <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 leading-relaxed italic">
+                                        Paste a direct link to a 3D model (GLB/GLTF) to visualize it.
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => modelInputRef.current?.click()}
+                                            disabled={uploadingModel}
+                                            className="flex-1 py-1 px-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 text-[10px] font-bold rounded border border-blue-500/20 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {uploadingModel ? '⏳ Uploading...' : '📤 Upload GLB'}
+                                        </button>
+                                        <input
+                                            ref={modelInputRef}
+                                            type="file"
+                                            accept=".glb,.gltf"
+                                            onChange={handleModelUpload}
+                                            className="hidden"
+                                        />
+                                    </div>
+                                    <div className="mt-2 p-2 bg-blue-900/10 rounded border border-blue-500/10">
+                                        <h5 className="text-[10px] text-blue-400 font-bold uppercase mb-1 flex items-center gap-1">
+                                            💡 Pro Tip: SketchUp Import
+                                        </h5>
+                                        <ol className="text-[9px] text-slate-400 space-y-1 list-decimal ml-3 leading-tight">
+                                            <li>In SketchUp, install a <b>GLB Export</b> extension.</li>
+                                            <li>Select your model and export as <b>.glb</b>.</li>
+                                            <li>Click <b>Upload GLB</b> above to use it here.</li>
+                                        </ol>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const comp = components.find(c => c.id === selectedComponentId);
+                                            if (comp) {
+                                                // Rotate 90 degrees
+                                                pushHistory();
+                                                setComponents(prev => prev.map(c =>
+                                                    c.id === selectedComponentId ? { ...c, rotation: (c.rotation + 90) % 360 } : c
+                                                ));
+                                            }
+                                        }}
+                                        className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg border border-slate-600/50 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        🔄 Rotate
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            pushHistory();
+                                            setComponents(prev => prev.filter(c => c.id !== selectedComponentId));
+                                            setSelectedComponentId(null);
+                                        }}
+                                        className="flex-1 py-2 bg-red-900/20 hover:bg-red-900/40 text-red-400 text-xs font-bold rounded-lg border border-red-500/20 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        🗑 Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
 
                 {/* Canvas */}
