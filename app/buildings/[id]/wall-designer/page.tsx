@@ -328,6 +328,7 @@ export default function WallDesignerPage() {
                     buildingDepth={building?.depthFt}
                     initialGeometry={floorGeometry}
                     initialScaleFtPerUnit={scaleFtPerUnit}
+                    initialPdfUrl={building?.pdfUrl}
                     onChange={handleEditorChange}
                 />
             </div>

@@ -9,6 +9,8 @@ import { useJobPolling } from '@/hooks/use-job-polling';
 import { FloorPlanData } from '@/lib/types/pdf-analysis';
 import { WallEditor } from './_components/wall-editor';
 import type { BuildingFloorGeometry } from '@/lib/types/building-geometry';
+import { convertAnalysisToGeometry } from '@/lib/wall-designer/conversion-utils';
+import { convertPDFToImage } from '@/lib/wall-designer/pdf-upload-handler';
 
 export default function NewBuildingPage() {
   const router = useRouter();
@@ -35,14 +37,23 @@ export default function NewBuildingPage() {
   // Use polling hook
   useJobPolling({
     jobId,
-    onComplete: (data: any) => {
+    onComplete: (data: FloorPlanData) => {
       setExtractedData(data);
       setAnalyzing(false);
 
       // Auto-populate form
       if (data.width) setFormData(prev => ({ ...prev, width: data.width.toString() }));
       if (data.length) setFormData(prev => ({ ...prev, length: data.length.toString() }));
-      if (data.height) setFormData(prev => ({ ...prev, height: data.height.toString() }));
+      if (data.height) setFormData(prev => ({ ...prev, height: data.height!.toString() }));
+
+      // Auto-generate geometry from analysis
+      if (data.width && data.length) {
+        // Default to manual mode enabled since we have geometry
+        setManualEnabled(true);
+        const { geometry, scaleFtPerUnit } = convertAnalysisToGeometry(data);
+        setFloorGeometry(geometry);
+        setFloorScaleFtPerUnit(scaleFtPerUnit);
+      }
     }
   });
 
@@ -56,9 +67,9 @@ export default function NewBuildingPage() {
       const depthFt = formData.length ? parseFloat(formData.length) : undefined;
       const ceilingHeightFt = formData.height ? parseFloat(formData.height) : undefined;
 
-      // Basic validation - width and length are required
-      if (!widthFt || !depthFt || isNaN(widthFt) || isNaN(depthFt)) {
-        throw new Error('Please provide width and length for the building.');
+      // Validation: if provided, must be numbers
+      if ((formData.width && isNaN(widthFt!)) || (formData.length && isNaN(depthFt!))) {
+        throw new Error('Please provide valid numbers for dimensions.');
       }
 
       const hasGeom = !!floorGeometry;
@@ -117,12 +128,12 @@ export default function NewBuildingPage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         setPdfFile(file);
         setError(null);
         await handlePdfUpload(file);
       } else {
-        setError('Please select an image file (PNG, JPG, JPEG, or WEBP)');
+        setError('Please select an image file (PNG, JPG, JPEG, WEBP) or PDF');
       }
     }
   };
@@ -132,16 +143,61 @@ export default function NewBuildingPage() {
     setError(null);
 
     try {
-      // Step 1: Upload PDF directly to Vercel Blob
-      const blob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/upload',
-      });
+      let blobUrl = '';
+      let imageUrlForAnalysis = '';
 
-      setPdfUrl(blob.url);
+      // Upload the original file (PDF or Image)
+      const uploadFile = async (fileToUpload: File | Blob, fileName: string) => {
+        try {
+          const blob = await upload(fileName, fileToUpload, {
+            access: 'public',
+            handleUploadUrl: '/api/upload',
+          });
+          return blob.url;
+        } catch (uploadError) {
+          console.warn('Vercel Blob upload failed, trying local:', uploadError);
+          const formData = new FormData();
+          if (fileToUpload instanceof File) {
+            formData.append('file', fileToUpload);
+          } else {
+            formData.append('file', fileToUpload, fileName);
+          }
+          const localResponse = await fetch('/api/local-upload', {
+            method: 'POST',
+            body: formData,
+          });
+          if (!localResponse.ok) throw new Error('Upload failed');
+          const localData = await localResponse.json();
+          return window.location.origin + localData.url;
+        }
+      };
 
-      // Step 2: Start PDF analysis job
-      const [result, error] = await startPdfAnalysis({ pdfUrl: blob.url });
+      blobUrl = await uploadFile(file, file.name);
+      setPdfUrl(blobUrl);
+
+      // If PDF, convert to Image for AI Analysis
+      if (file.type === 'application/pdf') {
+        try {
+          const { imageUrl } = await convertPDFToImage(file);
+          // Convert Data URL to Blob
+          const res = await fetch(imageUrl);
+          const blob = await res.blob();
+          // Upload the PNG
+          imageUrlForAnalysis = await uploadFile(blob, `${file.name.replace('.pdf', '')}_preview.png`);
+        } catch (pdfError) {
+          console.error('Client-side PDF conversion failed:', pdfError);
+          const errorMessage = pdfError instanceof Error ? pdfError.message : 'Unknown error';
+          // Fallback: try sending the PDF URL to server anyway (might fail as before)
+          // or better, alert user
+          throw new Error(`Failed to convert PDF preview: ${errorMessage}. Please try uploading a PNG/JPG instead.`);
+        }
+      } else {
+        // It's already an image
+        imageUrlForAnalysis = blobUrl;
+      }
+
+      // Step 2: Start analysis job with the IMAGE url
+      const [result, error] = await startPdfAnalysis({ imageUrl: imageUrlForAnalysis });
 
       if (error) {
         throw new Error(error.message || 'Failed to start floor plan analysis');
@@ -198,7 +254,7 @@ export default function NewBuildingPage() {
             </div>
 
             <div className="text-xs text-slate-500">
-              You can either upload a floor plan image or use <strong>Draw walls manually</strong> below.
+              You can either upload a floor plan image/PDF or use <strong>Draw walls manually</strong> below.
             </div>
 
             <div>
@@ -219,13 +275,13 @@ export default function NewBuildingPage() {
 
             <div>
               <label htmlFor="pdf" className="block text-sm font-medium text-slate-300 mb-2">
-                Upload Floor Plan Image (Optional)
+                Upload Floor Plan (Image or PDF)
               </label>
               <input
                 type="file"
                 id="pdf"
                 name="pdf"
-                accept=".png,.jpg,.jpeg,.webp,image/*"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*"
                 onChange={handleFileChange}
                 disabled={analyzing}
                 className="w-full px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -285,13 +341,12 @@ export default function NewBuildingPage() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label htmlFor="width" className="block text-sm font-medium text-slate-300 mb-2">
-                  Width (ft) *
+                  Width (ft)
                 </label>
                 <input
                   type="number"
                   id="width"
                   name="width"
-                  required
                   min="1"
                   step="0.1"
                   value={formData.width}
@@ -303,13 +358,12 @@ export default function NewBuildingPage() {
 
               <div>
                 <label htmlFor="length" className="block text-sm font-medium text-slate-300 mb-2">
-                  Length (ft) *
+                  Length (ft)
                 </label>
                 <input
                   type="number"
                   id="length"
                   name="length"
-                  required
                   min="1"
                   step="0.1"
                   value={formData.length}
@@ -338,7 +392,7 @@ export default function NewBuildingPage() {
             </div>
 
             <div className="text-xs text-slate-500">
-              Width and Length are required. Height is optional. Manual drawing is optional for advanced floor plans.
+              Dimensions are optional if you upload a floor plan, as we can extract them automatically.
             </div>
 
             <div className="flex gap-4 pt-4">

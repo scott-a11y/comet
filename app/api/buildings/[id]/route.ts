@@ -67,3 +67,25 @@ export async function PATCH(
         return apiError('Failed to update building', 500);
     }
 }
+
+export async function DELETE(
+    request: Request,
+    { params }: { params: { id: string } }
+) {
+    try {
+        const buildingId = parseInt(params.id);
+
+        if (isNaN(buildingId)) {
+            return apiError('Invalid building ID', 400);
+        }
+
+        await prisma.shopBuilding.delete({
+            where: { id: buildingId },
+        });
+
+        return apiSuccess({ message: 'Building deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting building:', error);
+        return apiError('Failed to delete building', 500);
+    }
+}

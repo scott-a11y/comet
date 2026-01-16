@@ -9,7 +9,7 @@ export type BuildingWallSegment = {
   a: string; // vertex id
   b: string; // vertex id
   thickness?: number; // in feet, e.g. 0.5
-  material?: 'brick' | 'concrete' | 'drywall';
+  material?: 'brick' | 'concrete' | 'drywall' | 'wood' | 'steel' | 'glass';
 };
 
 export type BuildingOpening = {

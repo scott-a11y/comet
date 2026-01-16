@@ -1,8 +1,9 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set worker path for PDF.js
+// Set worker path for PDF.js - using unpkg for v4+ support which uses ES modules
 if (typeof window !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    // pdfjs-dist v4+ uses .mjs for the worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 }
 
 export interface PDFUploadResult {
@@ -20,21 +21,24 @@ export interface PDFUploadResult {
  * @returns Image data URL and dimensions
  */
 export async function convertPDFToImage(
-    file: File,
+    fileOrBuffer: File | ArrayBuffer,
     pageNumber: number = 1,
     scale: number = 2
 ): Promise<PDFUploadResult> {
-    // Validate file
-    if (!file.type.includes('pdf')) {
-        throw new Error('File must be a PDF');
-    }
+    let arrayBuffer: ArrayBuffer;
 
-    if (file.size > 10 * 1024 * 1024) {
-        throw new Error('PDF file must be less than 10MB');
+    if (fileOrBuffer instanceof File) {
+        // Validate file
+        if (!fileOrBuffer.type.includes('pdf')) {
+            throw new Error('File must be a PDF');
+        }
+        if (fileOrBuffer.size > 10 * 1024 * 1024) {
+            throw new Error('PDF file must be less than 10MB');
+        }
+        arrayBuffer = await fileOrBuffer.arrayBuffer();
+    } else {
+        arrayBuffer = fileOrBuffer;
     }
-
-    // Read file as array buffer
-    const arrayBuffer = await file.arrayBuffer();
 
     // Load PDF document
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });

@@ -54,8 +54,10 @@ export const POST = withRateLimit(async (request: Request) => {
         widthFt: validated.widthFt ?? null,
         depthFt: validated.depthFt ?? null,
         ceilingHeightFt: validated.ceilingHeightFt ?? null,
-        // Note: pdfUrl, extractedData, floorGeometry, floorScaleFtPerUnit
-        // are temporarily skipped until database migration is run
+        pdfUrl: validated.pdfUrl ?? null,
+        extractedData: validated.extractedData ?? undefined, // Json type handling
+        floorGeometry: validated.floorGeometry ?? undefined, // Json type handling
+        floorScaleFtPerUnit: validated.floorScaleFtPerUnit ?? null,
       }
     })
 

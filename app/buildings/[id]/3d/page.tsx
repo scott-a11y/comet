@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { DockableToolbar, DockableWorkspace } from '@/components/layout/DockableToolbar';
+import { Eye, EyeOff, RotateCcw, ZoomIn, ZoomOut, Move, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 // Dynamically import Scene with SSR disabled
 const Scene = dynamic(
@@ -28,6 +31,7 @@ export default function Building3DPage({ params }: PageProps) {
     const [building, setBuilding] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showWalls, setShowWalls] = useState(true);
 
     useEffect(() => {
         const buildingId = parseInt(params.id);
@@ -55,6 +59,12 @@ export default function Building3DPage({ params }: PageProps) {
             });
     }, [params.id]);
 
+    const toggleWalls = () => {
+        setShowWalls(!showWalls);
+        const event = new CustomEvent('toggle-walls');
+        window.dispatchEvent(event);
+    };
+
     if (loading) {
         return (
             <div className="h-screen w-full bg-slate-950 flex items-center justify-center">
@@ -76,39 +86,105 @@ export default function Building3DPage({ params }: PageProps) {
     }
 
     return (
-        <div className="h-screen w-full bg-slate-950 relative">
-            {/* Navigation Controls */}
-            <div className="absolute top-4 left-4 z-50 flex gap-2">
-                {/* Back Button */}
-                <a
-                    href={`/buildings/${params.id}/wall-designer`}
-                    className="px-4 py-2 bg-slate-800/90 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm border border-slate-600"
+        <DockableWorkspace
+            toolbar={
+                <DockableToolbar
+                    title="3D Viewer"
+                    subtitle={building.name || 'Building Model'}
+                    showDockControls={true}
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to Designer
-                </a>
+                    {/* Navigation */}
+                    <div className="space-y-2">
+                        <h3 className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Navigation</h3>
+                        <Link
+                            href={`/buildings/${params.id}/wall-designer`}
+                            className="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm"
+                        >
+                            <ArrowLeft size={16} />
+                            Back to Designer
+                        </Link>
+                    </div>
 
-                {/* Wall Visibility Toggle */}
-                <button
-                    onClick={() => {
-                        // This will be passed to the Scene component
-                        const event = new CustomEvent('toggle-walls');
-                        window.dispatchEvent(event);
-                    }}
-                    className="px-4 py-2 bg-slate-800/90 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm border border-slate-600"
-                    title="Toggle Wall Visibility"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    Toggle Walls
-                </button>
-            </div>
+                    {/* View Controls */}
+                    <div className="space-y-2">
+                        <h3 className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">View Controls</h3>
 
-            <Scene building={building} />
-        </div>
+                        <button
+                            onClick={toggleWalls}
+                            className={`w-full px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm ${showWalls
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                                }`}
+                        >
+                            {showWalls ? <Eye size={16} /> : <EyeOff size={16} />}
+                            {showWalls ? 'Hide Walls' : 'Show Walls'}
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                const event = new CustomEvent('reset-camera');
+                                window.dispatchEvent(event);
+                            }}
+                            className="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center gap-2 text-sm"
+                        >
+                            <RotateCcw size={16} />
+                            Reset Camera
+                        </button>
+                    </div>
+
+                    {/* Camera Controls */}
+                    <div className="space-y-2">
+                        <h3 className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Camera</h3>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => {
+                                    const event = new CustomEvent('zoom-in');
+                                    window.dispatchEvent(event);
+                                }}
+                                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                                title="Zoom In"
+                            >
+                                <ZoomIn size={16} />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const event = new CustomEvent('zoom-out');
+                                    window.dispatchEvent(event);
+                                }}
+                                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                                title="Zoom Out"
+                            >
+                                <ZoomOut size={16} />
+                            </button>
+                        </div>
+
+                        <div className="text-[10px] text-slate-500 mt-2 space-y-1">
+                            <div>• Left Click + Drag: Rotate</div>
+                            <div>• Right Click + Drag: Pan</div>
+                            <div>• Scroll: Zoom</div>
+                        </div>
+                    </div>
+
+                    {/* Building Info */}
+                    {building && (
+                        <div className="mt-auto p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                            <h3 className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">Building Info</h3>
+                            <div className="space-y-1 text-xs text-slate-400">
+                                <div><span className="text-slate-500">Name:</span> {building.name || 'Unnamed'}</div>
+                                {building.width && building.depth && (
+                                    <div><span className="text-slate-500">Size:</span> {building.width}' × {building.depth}'</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </DockableToolbar>
+            }
+            canvas={
+                <div className="w-full h-full bg-slate-950 relative">
+                    <Scene building={building} />
+                </div>
+            }
+        />
     );
 }

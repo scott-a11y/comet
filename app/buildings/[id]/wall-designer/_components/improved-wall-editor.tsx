@@ -3,21 +3,115 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Line, Circle, Text, Rect, Arc, Group, Image as KonvaImage } from 'react-konva';
 import useImage from 'use-image';
-import { Settings, Undo2, Redo2, Trash2, Maximize, Target, MousePointer2, Move, DoorOpen, Square, Zap, Cable, Box, Link, FileUp, Ruler, Layers, Menu } from 'lucide-react';
+import { Settings, Undo2, Redo2, Trash2, Maximize, Target, MousePointer2, Move, DoorOpen, Square, Zap, Cable, Box, Link, FileUp, Ruler, Layers, Menu, Grid3x3, Calculator, Home } from 'lucide-react';
 import type { BuildingFloorGeometry, BuildingVertex, BuildingWallSegment, BuildingOpening, ElectricalEntry, Component, ComponentCategory, LayerVisibility } from '@/lib/types/building-geometry';
 import { COMPONENT_CATALOG, createComponentFromTemplate, type ComponentTemplate } from '@/lib/wall-designer/component-catalog';
 import { convertPDFToImage, validatePDFFile } from '@/lib/wall-designer/pdf-upload-handler';
 import { analyzeBlueprintWithAI, validateAnalysisResult } from '@/lib/wall-designer/blueprint-analyzer';
 import { upload } from '@vercel/blob/client';
 import { useWorkspaceStore } from '@/hooks/use-workspace-store';
-import { WorkspaceWrapper } from './WorkspaceWrapper';
+import { DockableToolbar, DockableWorkspace } from '@/components/layout/DockableToolbar';
 import { WorkspaceSettingsModal } from './WorkspaceSettingsModal';
+import { AdvancedWallTools, type AdvancedDrawMode, type WallProperties, calculateOrthogonalPoint, calculateAngleLockedPoint, calculateParallelPoint, calculatePerpendicularPoint, calculateOffsetWall } from './advanced-wall-tools';
+import { DimensionInputBox, type CoordinateInputMode, type DimensionInput, dimensionToCoordinates, QuickDimensionPresets } from './dimension-input';
+import { detectRooms, cleanupWalls, autoCloseRoom, findWallGaps, suggestRoomName, type Room } from './smart-wall-utils';
+
+/**
+ * SketchUp-style Top Menu Bar
+ */
+const TopMenuBar = ({
+    activeToolbars,
+    onToggleToolbar,
+    onAction
+}: {
+    activeToolbars: any,
+    onToggleToolbar: (key: string) => void,
+    onAction: (action: string) => void
+}) => {
+    const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+    const MenuButton = ({ label, menuId }: { label: string, menuId: string }) => (
+        <div className="relative">
+            <button
+                className={`px-3 py-1 text-sm rounded hover:bg-slate-700 transition-colors ${openMenu === menuId ? 'bg-slate-700 text-white' : 'text-slate-400'}`}
+                onClick={() => setOpenMenu(openMenu === menuId ? null : menuId)}
+            >
+                {label}
+            </button>
+            {openMenu === menuId && (
+                <div className="absolute top-full left-0 mt-1 w-48 bg-slate-800 border border-slate-700 rounded shadow-2xl z-[100] py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                    {menuId === 'file' && (
+                        <>
+                            <button onClick={() => { onAction('upload-pdf'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-blue-600 hover:text-white">Upload Blueprint (PDF)</button>
+                            <button onClick={() => { onAction('save'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-blue-600 hover:text-white">Save Workspace</button>
+                            <div className="border-t border-slate-700 my-1"></div>
+                            <button onClick={() => { onAction('clear'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-600 hover:text-white">Clear All</button>
+                        </>
+                    )}
+                    {menuId === 'view' && (
+                        <>
+                            <label className="flex items-center px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 cursor-pointer">
+                                <input type="checkbox" checked={activeToolbars.layers} onChange={() => onToggleToolbar('layers')} className="mr-3" />
+                                Layers Panel
+                            </label>
+                            <label className="flex items-center px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 cursor-pointer">
+                                <input type="checkbox" checked={activeToolbars.stats} onChange={() => onToggleToolbar('stats')} className="mr-3" />
+                                Stats Panel
+                            </label>
+                            <div className="border-t border-slate-700 my-1"></div>
+                            <button onClick={() => { onAction('zoom-reset'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Reset Viewport</button>
+                        </>
+                    )}
+                    {menuId === 'tools' && (
+                        <>
+                            <button onClick={() => { onAction('measure'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Tape Measure (M)</button>
+                            <button onClick={() => { onAction('calibrate'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Calibrate Scale</button>
+                            <button onClick={() => { onAction('detect-rooms'); setOpenMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Room Detection</button>
+                            <div className="border-t border-slate-700 my-1"></div>
+                            <label className="flex items-center px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 cursor-pointer">
+                                <input type="checkbox" checked={activeToolbars.advanced} onChange={() => onToggleToolbar('advanced')} className="mr-3" />
+                                Advanced Drawing Tools
+                            </label>
+                            <label className="flex items-center px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 cursor-pointer">
+                                <input type="checkbox" checked={activeToolbars.dimensions} onChange={() => onToggleToolbar('dimensions')} className="mr-3" />
+                                Dimension Tooltips
+                            </label>
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+
+    useEffect(() => {
+        const handleClickOutside = () => setOpenMenu(null);
+        if (openMenu) document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [openMenu]);
+
+    return (
+        <div className="flex items-center h-10 px-2 bg-slate-900 border-b border-slate-800 gap-1 select-none">
+            <div className="flex items-center gap-2 mr-4 ml-1">
+                <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-[10px] font-bold text-white">C</div>
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-tighter">Comet Architect</span>
+            </div>
+
+            <MenuButton label="File" menuId="file" />
+            <MenuButton label="Edit" menuId="edit" />
+            <MenuButton label="View" menuId="view" />
+            <MenuButton label="Tools" menuId="tools" />
+            <MenuButton label="Window" menuId="window" />
+            <MenuButton label="Help" menuId="help" />
+        </div>
+    );
+};
 
 interface Props {
     buildingWidth?: number;
     buildingDepth?: number;
     initialGeometry?: BuildingFloorGeometry | null;
     initialScaleFtPerUnit?: number | null;
+    initialPdfUrl?: string | null;
     onChange: (payload: {
         geometry: BuildingFloorGeometry | null;
         scaleFtPerUnit: number | null;
@@ -25,7 +119,7 @@ interface Props {
     }) => void;
 }
 
-type Mode = 'DRAW' | 'EDIT' | 'SELECT' | 'PAN' | 'DOOR' | 'WINDOW' | 'POWER' | 'ELECTRIC_RUN' | 'COMPONENT';
+type Mode = 'DRAW' | 'EDIT' | 'SELECT' | 'PAN' | 'DOOR' | 'WINDOW' | 'POWER' | 'ELECTRIC_RUN' | 'COMPONENT' | 'CALIBRATE' | 'MEASURE';
 type ToolbarDockPosition = 'top-left' | 'top-center' | 'bottom-center' | 'left-bar';
 
 const GRID_SIZE = 20; // pixels
@@ -69,6 +163,7 @@ export function ImprovedWallEditor({
     buildingDepth,
     initialGeometry,
     initialScaleFtPerUnit,
+    initialPdfUrl,
     onChange,
 }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -124,6 +219,7 @@ export function ImprovedWallEditor({
     const [selectionRect, setSelectionRect] = useState<{ x1: number, y1: number, x2: number, y2: number } | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const { visibleTools, dockPosition, isCompact } = useWorkspaceStore();
+    const setDockPosition = useWorkspaceStore((state) => state.setDockPosition);
 
     // Component library state
     const [components, setComponents] = useState<Component[]>([]);
@@ -135,6 +231,10 @@ export function ImprovedWallEditor({
     // Panel visibility state
     const [showScalePanel, setShowScalePanel] = useState(true);
     const [showLayerPanel, setShowLayerPanel] = useState(true);
+
+    // Room detection state
+    const [detectedRooms, setDetectedRooms] = useState<Room[]>([]);
+    const [showRoomLabels, setShowRoomLabels] = useState(true);
 
     // Layer visibility state
     const [layerVisibility, setLayerVisibility] = useState<LayerVisibility>({
@@ -155,8 +255,127 @@ export function ImprovedWallEditor({
     const [blueprintPosition, setBlueprintPosition] = useState({ x: 0, y: 0 });
     const [blueprintScale, setBlueprintScale] = useState(1);
     const [blueprintRotation, setBlueprintRotation] = useState(0);
+    const [showBlueprint, setShowBlueprint] = useState(true);
     const [uploadingPDF, setUploadingPDF] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Spacebar Panning State
+    const [isSpacePressed, setIsSpacePressed] = useState(false);
+
+    const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+
+    // Measurement tool state
+    const [measurementPoints, setMeasurementPoints] = useState<Array<{ x: number; y: number }>>([]);
+    const [measurementDistance, setMeasurementDistance] = useState<number | null>(null);
+
+    // Top menu bar state
+    const [showTopMenu, setShowTopMenu] = useState(true);
+    const [activeToolbars, setActiveToolbars] = useState({
+        main: true,
+        advanced: false,
+        dimensions: false,
+        layers: true,
+        stats: true
+    });
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' && !e.repeat) {
+                if (e.target === document.body || e.target === containerRef.current) {
+                    e.preventDefault();
+                }
+                setIsSpacePressed(true);
+            }
+            if (e.key === 'Control' || e.metaKey) {
+                setIsCtrlPressed(true);
+            }
+
+            // Advanced drawing mode shortcuts (only when in DRAW mode)
+            if (mode === 'DRAW' && !e.ctrlKey && !e.metaKey) {
+                switch (e.key.toLowerCase()) {
+                    case 'o':
+                        e.preventDefault();
+                        setAdvancedDrawMode(prev => prev === 'orthogonal' ? 'free' : 'orthogonal');
+                        break;
+                    case 'a':
+                        e.preventDefault();
+                        setAdvancedDrawMode(prev => prev === 'angle-lock' ? 'free' : 'angle-lock');
+                        break;
+                    case 'p':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            setAdvancedDrawMode(prev => prev === 'perpendicular' ? 'free' : 'perpendicular');
+                        } else {
+                            setAdvancedDrawMode(prev => prev === 'parallel' ? 'free' : 'parallel');
+                        }
+                        break;
+                    case 'f':
+                        e.preventDefault();
+                        setAdvancedDrawMode(prev => prev === 'offset' ? 'free' : 'offset');
+                        break;
+                    case 'c':
+                        e.preventDefault();
+                        setAdvancedDrawMode(prev => prev === 'arc' ? 'free' : 'arc');
+                        break;
+                }
+            }
+
+            // ESC key - Exit current mode to SELECT
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                setMode('SELECT');
+                setLastWallVertexId(null);
+                setMeasurementPoints([]);
+                setMeasurementDistance(null);
+                setSelectedVertexId(null);
+                setSelectedSegmentId(null);
+            }
+
+            // UI toggle shortcuts
+            if (!e.ctrlKey && !e.metaKey) {
+                switch (e.key.toLowerCase()) {
+                    case 't':
+                        e.preventDefault();
+                        setShowAdvancedTools(prev => !prev);
+                        break;
+                    case 'd':
+                        if (mode === 'DRAW') {
+                            e.preventDefault();
+                            setShowDimensionInputBox(prev => !prev);
+                        }
+                        break;
+                    case 'm':
+                        e.preventDefault();
+                        setMode('MEASURE');
+                        setMeasurementPoints([]);
+                        setMeasurementDistance(null);
+                        break;
+                }
+            }
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.code === 'Space') {
+                setIsSpacePressed(false);
+            }
+            if (e.key === 'Control' || !e.metaKey) {
+                // Logic slightly imperfect for metaKey release on some OS/browsers, 
+                // but checking explicitly if it was the keyup helps.
+                // Simpler: Just unset if key is Control. 
+                // For Mac Meta key, we might need e.key === 'Meta'.
+                if (e.key === 'Control' || e.key === 'Meta') {
+                    setIsCtrlPressed(false);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []);
 
     const pushHistory = useCallback(() => {
         setHistory(prev => {
@@ -202,6 +421,30 @@ export function ImprovedWallEditor({
     const [wallThickness, setWallThickness] = useState('0.5');
     const [wallMaterial, setWallMaterial] = useState<'brick' | 'concrete' | 'drywall'>('drywall');
 
+    // Calibration state
+    const [calibrationPoints, setCalibrationPoints] = useState<{ x: number; y: number }[]>([]);
+
+    // Advanced wall drawing state
+    const [advancedDrawMode, setAdvancedDrawMode] = useState<AdvancedDrawMode>('free');
+    const [wallProperties, setWallProperties] = useState<WallProperties>({
+        type: 'interior',
+        thickness: 0.5,
+        height: 8,
+        material: 'drywall'
+    });
+    const [angleLock, setAngleLock] = useState(0);
+    const [offsetDistance, setOffsetDistance] = useState(2);
+    const [referenceSegmentId, setReferenceSegmentId] = useState<string | null>(null);
+
+    // Dimension input state
+    const [dimensionInputMode, setDimensionInputMode] = useState<CoordinateInputMode>('length');
+    const [showDimensionInputBox, setShowDimensionInputBox] = useState(false);
+
+    const [showAdvancedTools, setShowAdvancedTools] = useState(false);
+    const [showCalibrationDialog, setShowCalibrationDialog] = useState(false);
+    const [calibrationDistancePx, setCalibrationDistancePx] = useState(0);
+    const [calibrationLengthFt, setCalibrationLengthFt] = useState('');
+
     // Responsive stage size handling
     useEffect(() => {
         if (!containerRef.current) return;
@@ -219,6 +462,41 @@ export function ImprovedWallEditor({
         observer.observe(containerRef.current);
         return () => observer.disconnect();
     }, []);
+
+    // Load initial PDF if provided (e.g. from New Building wizard)
+    useEffect(() => {
+        const loadInitialPdf = async () => {
+            if (initialPdfUrl && !blueprintImage && !uploadingPDF) {
+                setUploadingPDF(true);
+                try {
+                    const response = await fetch(initialPdfUrl);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const result = await convertPDFToImage(arrayBuffer);
+                    setBlueprintImage(result.imageUrl);
+                    // Center the blueprint
+                    setBlueprintPosition({ x: 0, y: 0 });
+
+                    // Auto-calculate scale if we have building dimensions and no existing scale
+                    if (buildingWidth && !scaleFtPerUnit) {
+                        // scaleFtPerUnit = feet / pixel
+                        const calculatedScale = buildingWidth / result.width;
+                        setScaleFtPerUnit(calculatedScale);
+                        // Also notify parent of the new scale
+                        onChange({
+                            geometry: initialGeometry || null,
+                            scaleFtPerUnit: calculatedScale,
+                            validationError: null
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to load initial PDF:', error);
+                } finally {
+                    setUploadingPDF(false);
+                }
+            }
+        };
+        loadInitialPdf();
+    }, [initialPdfUrl]);
 
     // Global keyboard listener for SketchUp-style input
     const applySketchupMeasurement = useCallback(() => {
@@ -355,6 +633,45 @@ export function ImprovedWallEditor({
         }
     }, []);
 
+
+    // Handle Calibration Click
+    const handleCalibrationClick = useCallback((pos: { x: number; y: number }) => {
+        setCalibrationPoints(prev => {
+            const next = [...prev, pos];
+            if (next.length === 2) {
+                // Calculate pixel distance
+                const distPx = distance(next[0], next[1]);
+                setCalibrationDistancePx(distPx);
+                setShowCalibrationDialog(true);
+            }
+            return next;
+        });
+    }, []);
+
+    const applyCalibration = () => {
+        const distFt = parseFloat(calibrationLengthFt);
+        if (isNaN(distFt) || distFt <= 0) {
+            alert('Please enter a valid distance in feet.');
+            return;
+        }
+
+        // ft / px
+        const newScale = distFt / calibrationDistancePx;
+        setScaleFtPerUnit(newScale);
+        onChange({
+            geometry: null, // Don't wipe geometry, just update scale
+            scaleFtPerUnit: newScale,
+            validationError: null
+        });
+
+        // Reset
+        setCalibrationPoints([]);
+        setShowCalibrationDialog(false);
+        setCalibrationLengthFt('');
+        setMode('SELECT');
+        alert(`Scale calibrated! 1 pixel = ${newScale.toFixed(4)} ft`);
+    };
+
     const handleModelUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !selectedComponentId) return;
@@ -482,8 +799,13 @@ export function ImprovedWallEditor({
 
     // Handle mouse down
     const handleMouseDown = useCallback((e: any) => {
+        // If panning (via spacebar or mode), don't do other actions
+        if (isSpacePressed || mode === 'PAN') return;
+
         const pos = getWorldPos(e);
-        const snappedPos = snapToGridEnabled ? snapToGrid(pos, GRID_SIZE) : pos;
+        // Disable snap if snap disabled globally OR if modifier held
+        const shouldSnap = snapToGridEnabled && !isCtrlPressed;
+        const snappedPos = shouldSnap ? snapToGrid(pos, GRID_SIZE) : pos;
         const nearbyVertex = findNearbyVertex(snappedPos);
 
         // Clear selections if clicking on empty space
@@ -497,6 +819,28 @@ export function ImprovedWallEditor({
         }
 
         // Logic for specialized design tools
+        if (mode === 'CALIBRATE') {
+            handleCalibrationClick(pos);
+            return;
+        }
+
+        if (mode === 'MEASURE') {
+            if (measurementPoints.length === 0) {
+                setMeasurementPoints([pos]);
+                setMeasurementDistance(null);
+            } else if (measurementPoints.length === 1) {
+                const start = measurementPoints[0];
+                const distPx = distance(start, pos);
+                const distFt = distPx * (scaleFtPerUnit || 0.05);
+                setMeasurementPoints([start, pos]);
+                setMeasurementDistance(distFt);
+            } else {
+                setMeasurementPoints([pos]);
+                setMeasurementDistance(null);
+            }
+            return;
+        }
+
         if (mode === 'DRAW' || mode === 'EDIT' || mode === 'DOOR' || mode === 'WINDOW' || mode === 'POWER' || mode === 'ELECTRIC_RUN') {
             // Handle door/window placement
             if (mode === 'DOOR' || mode === 'WINDOW') {
@@ -606,7 +950,8 @@ export function ImprovedWallEditor({
                     }
                 } else {
                     pushHistory();
-                    const snappedPos = snapToGridEnabled ? snapToGrid(pos, GRID_SIZE) : pos;
+                    const shouldSnap = snapToGridEnabled && !isCtrlPressed;
+                    const snappedPos = shouldSnap ? snapToGrid(pos, GRID_SIZE) : pos;
                     const newVertex: BuildingVertex = {
                         id: newId('v'),
                         x: snappedPos.x,
@@ -646,9 +991,6 @@ export function ImprovedWallEditor({
             setComponents(prev => [...prev, newComponent]);
             setSelectedComponentId(compId); // Auto-select for feedback
             // Don't clear componentToPlace to allow multiple placements
-        } else if (mode === 'PAN') {
-            setIsDragging(true);
-            setDragStart(pos);
         } else if (mode === 'SELECT' && e.target === e.target.getStage()) {
             // Only start marquee if clicking the stage background
             setDragStart(pos);
@@ -660,23 +1002,54 @@ export function ImprovedWallEditor({
     const rafIdRef = useRef<number | null>(null);
 
     const handleMouseMove = useCallback((e: any) => {
-        if (mode !== 'DRAW' && !(mode === 'PAN' && isDragging) && mode !== 'ELECTRIC_RUN' && mode !== 'COMPONENT' && !(mode === 'SELECT' && isDragging)) return;
+        if (mode !== 'DRAW' && mode !== 'ELECTRIC_RUN' && mode !== 'COMPONENT' && mode !== 'CALIBRATE' && mode !== 'MEASURE' && !(mode === 'SELECT' && isDragging)) return;
 
         const pos = getWorldPos(e);
 
-        if (mode === 'DRAW' || mode === 'ELECTRIC_RUN' || mode === 'COMPONENT') {
+        if (mode === 'DRAW' || mode === 'ELECTRIC_RUN' || mode === 'COMPONENT' || mode === 'CALIBRATE' || mode === 'MEASURE') {
             if (rafIdRef.current !== null) {
                 cancelAnimationFrame(rafIdRef.current);
             }
             rafIdRef.current = requestAnimationFrame(() => {
-                const snappedPos = snapToGridEnabled ? snapToGrid(pos, GRID_SIZE) : pos;
+                let finalPos = pos;
+
+                // Apply advanced drawing modes
+                if (mode === 'DRAW' && lastWallVertexId) {
+                    const lastVertex = vertices.find(v => v.id === lastWallVertexId);
+
+                    if (lastVertex) {
+                        switch (advancedDrawMode) {
+                            case 'orthogonal':
+                                finalPos = calculateOrthogonalPoint(lastVertex, pos);
+                                break;
+                            case 'angle-lock':
+                                finalPos = calculateAngleLockedPoint(lastVertex, pos, angleLock);
+                                break;
+                            case 'parallel':
+                            case 'perpendicular':
+                                if (referenceSegmentId) {
+                                    const refSeg = segments.find(s => s.id === referenceSegmentId);
+                                    if (refSeg) {
+                                        const refStart = vertices.find(v => v.id === refSeg.a);
+                                        const refEnd = vertices.find(v => v.id === refSeg.b);
+                                        if (refStart && refEnd) {
+                                            finalPos = advancedDrawMode === 'parallel'
+                                                ? calculateParallelPoint(refStart, refEnd, lastVertex, pos)
+                                                : calculatePerpendicularPoint(refStart, refEnd, lastVertex, pos);
+                                        }
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                }
+
+                // Apply snapping
+                const shouldSnap = snapToGridEnabled && !isCtrlPressed;
+                const snappedPos = shouldSnap ? snapToGrid(finalPos, GRID_SIZE) : finalPos;
                 setGhostPoint(snappedPos);
                 rafIdRef.current = null;
             });
-        } else if (mode === 'PAN' && isDragging && dragStart) {
-            const dx = pos.x - dragStart.x;
-            const dy = pos.y - dragStart.y;
-            setStagePos(prev => ({ x: prev.x + dx, y: prev.y + dy }));
         } else if (mode === 'SELECT' && isDragging && dragStart) {
             setSelectionRect({
                 x1: dragStart.x,
@@ -1135,14 +1508,43 @@ export function ImprovedWallEditor({
         const showLabels = !isCompact || isHorizontal;
 
         return (
-            <div className={`p-4 bg-slate-800/95 backdrop-blur-md border border-slate-700 shadow-2xl flex ${isHorizontal ? 'flex-row items-center gap-4 h-16' : `flex-col gap-6 ${isCompact ? 'w-16' : 'w-16 md:w-64'} h-full transition-all duration-300`}`}>
-                {/* Brand / Header */}
-                {!isHorizontal && !isCompact && (
-                    <div className="hidden md:flex flex-col mb-2">
-                        <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Architect</span>
-                        <span className="text-[8px] text-slate-500 font-medium">Workspace v1.2</span>
+            <DockableToolbar
+                title="Architect"
+                subtitle="Workspace v2.0"
+                showDockControls={true}
+                showSettings={true}
+                onSettingsClick={() => setIsSettingsOpen(true)}
+            >
+                {/* Scale Setting Panel - Always Visible */}
+                <div className={`mb-4 overflow-hidden rounded-xl border border-blue-500/30 bg-blue-600/10 backdrop-blur-md shadow-lg shadow-blue-500/10 ${isCompact ? 'p-1' : 'p-3'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center text-blue-400">
+                            <Target size={18} />
+                        </div>
+                        {!isCompact && (
+                            <div>
+                                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Calibration</h4>
+                                <p className="text-[11px] font-medium text-slate-200">
+                                    {scaleFtPerUnit ? `1px = ${scaleFtPerUnit.toFixed(3)}'` : 'Not Scaled'}
+                                </p>
+                            </div>
+                        )}
                     </div>
-                )}
+
+                    {!isCompact && (
+                        <button
+                            onClick={() => {
+                                setMode('CALIBRATE');
+                                setCalibrationPoints([]);
+                                setShowCalibrationDialog(false);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-blue-600/20 group"
+                        >
+                            <Ruler size={14} className="group-hover:rotate-12 transition-transform" />
+                            Calibrate
+                        </button>
+                    )}
+                </div>
 
                 {/* Main Tool Grid */}
                 <div className={`flex ${isHorizontal ? 'flex-row items-center gap-2' : 'flex-col gap-4'}`}>
@@ -1199,6 +1601,18 @@ export function ImprovedWallEditor({
                                 <span className={showLabels ? 'hidden' : 'hidden md:inline'}>Pan</span>
                             </button>
                         )}
+                        <button
+                            title="Tape Measure (M)"
+                            onClick={() => {
+                                setMode('MEASURE');
+                                setMeasurementPoints([]);
+                                setMeasurementDistance(null);
+                            }}
+                            className={toolButtonStyle(mode === 'MEASURE', 'bg-teal-600 border-teal-400')}
+                        >
+                            <Ruler size={16} />
+                            <span className={showLabels ? 'hidden' : 'hidden md:inline'}>Measure</span>
+                        </button>
                     </div>
 
                     {/* Openings */}
@@ -1258,6 +1672,52 @@ export function ImprovedWallEditor({
                                     <Redo2 size={14} />
                                 </button>
                             )}
+                            {visibleTools.includes('measure') && (
+                                <button
+                                    title="Calibrate Scale (Measure Known Distance)"
+                                    onClick={() => {
+                                        setMode('CALIBRATE');
+                                        // Reset calibration state
+                                        setCalibrationPoints([]);
+                                        setShowCalibrationDialog(false);
+                                    }}
+                                    className={toolButtonStyle(mode === 'CALIBRATE', 'bg-purple-900 border-purple-700')}
+                                >
+                                    <Ruler size={14} />
+                                </button>
+                            )}
+                            {/* Advanced Drawing Tools Toggle */}
+                            <button
+                                title="Advanced Drawing Tools (Orthogonal, Angle Lock, etc.)"
+                                onClick={() => setShowAdvancedTools(!showAdvancedTools)}
+                                className={toolButtonStyle(showAdvancedTools, 'bg-indigo-600 border-indigo-400')}
+                            >
+                                <Grid3x3 size={14} />
+                            </button>
+                            {/* Dimension Input Toggle */}
+                            <button
+                                title="Dimension Input Box (Type exact measurements)"
+                                onClick={() => setShowDimensionInputBox(!showDimensionInputBox)}
+                                className={toolButtonStyle(showDimensionInputBox, 'bg-cyan-600 border-cyan-400')}
+                            >
+                                <Calculator size={14} />
+                            </button>
+                            {/* Room Detection */}
+                            <button
+                                title="Detect Rooms & Cleanup Walls"
+                                onClick={() => {
+                                    const rooms = detectRooms(vertices, segments, scaleFtPerUnit || 0.05);
+                                    setDetectedRooms(rooms);
+                                    setShowRoomLabels(true);
+
+                                    // Show notification
+                                    alert(`Detected ${rooms.length} room(s):\n${rooms.map(r => `- ${suggestRoomName(r)} (${Math.round(r.area)} sq ft)`).join('\n')}`);
+                                }}
+                                disabled={vertices.length < 3 || segments.length < 3}
+                                className={toolButtonStyle(false, 'bg-teal-600 border-teal-400 disabled:opacity-30')}
+                            >
+                                <Home size={14} />
+                            </button>
                             {visibleTools.includes('delete') && (
                                 <button title="Clear All" onClick={handleClear} className={toolButtonStyle(false, 'bg-red-900 border-red-700')}>
                                     <Trash2 size={14} />
@@ -1282,13 +1742,54 @@ export function ImprovedWallEditor({
                         </button>
                     </div>
                 )}
-            </div>
+            </DockableToolbar>
         );
     };
 
     return (
-        <>
-            <WorkspaceWrapper
+        <div className="flex flex-col w-full h-full overflow-hidden bg-slate-950">
+            {/* SketchUp-style Top Menu Bar */}
+            <TopMenuBar
+                activeToolbars={{
+                    advanced: showAdvancedTools,
+                    dimensions: showDimensionInputBox,
+                    layers: showLayerPanel,
+                    stats: true // always on for now
+                }}
+                onToggleToolbar={(key) => {
+                    if (key === 'advanced') setShowAdvancedTools(!showAdvancedTools);
+                    if (key === 'dimensions') setShowDimensionInputBox(!showDimensionInputBox);
+                    if (key === 'layers') setShowLayerPanel(!showLayerPanel);
+                }}
+                onAction={(action) => {
+                    if (action === 'save') {
+                        // Implement save logic here
+                        alert('Workspace saved to local database.');
+                    } else if (action === 'clear') {
+                        handleClear();
+                    } else if (action === 'upload-pdf') {
+                        fileInputRef.current?.click();
+                    } else if (action === 'zoom-reset') {
+                        setStagePos({ x: 0, y: 0 });
+                        setScale(1);
+                    } else if (action === 'measure') {
+                        setMode('MEASURE');
+                        setMeasurementPoints([]);
+                        setMeasurementDistance(null);
+                    } else if (action === 'calibrate') {
+                        setMode('CALIBRATE');
+                        setCalibrationPoints([]);
+                        setShowCalibrationDialog(false);
+                    } else if (action === 'detect-rooms') {
+                        const rooms = detectRooms(vertices, segments, scaleFtPerUnit || 0.05);
+                        setDetectedRooms(rooms);
+                        setShowRoomLabels(true);
+                        alert(`Found ${rooms.length} room(s).`);
+                    }
+                }}
+            />
+
+            <DockableWorkspace
                 toolbar={renderToolbar()}
                 canvas={(
                     <div ref={containerRef} className="w-full h-full relative overflow-hidden">
@@ -1372,6 +1873,105 @@ export function ImprovedWallEditor({
                             </div>
                         )}
 
+                        {/* Advanced Wall Tools Panel */}
+                        {showAdvancedTools && mode === 'DRAW' && (
+                            <div className="absolute top-4 left-4 z-20 w-80 animate-in slide-in-from-left duration-200">
+                                <AdvancedWallTools
+                                    drawMode={advancedDrawMode}
+                                    onDrawModeChange={setAdvancedDrawMode}
+                                    wallProperties={wallProperties}
+                                    onWallPropertiesChange={(props) => setWallProperties(prev => ({ ...prev, ...props }))}
+                                    angleLock={angleLock}
+                                    onAngleLockChange={setAngleLock}
+                                    offsetDistance={offsetDistance}
+                                    onOffsetDistanceChange={setOffsetDistance}
+                                />
+                            </div>
+                        )}
+
+                        {/* Dimension Input Box - Moved to top-right to avoid overlap */}
+                        {showDimensionInputBox && mode === 'DRAW' && (
+                            <div className="absolute top-20 right-4 z-20 animate-in slide-in-from-right duration-200">
+                                <DimensionInputBox
+                                    mode={dimensionInputMode}
+                                    onModeChange={setDimensionInputMode}
+                                    onSubmit={(input) => {
+                                        const lastVertex = lastWallVertexId
+                                            ? vertices.find(v => v.id === lastWallVertexId)
+                                            : null;
+
+                                        if (lastVertex) {
+                                            const coords = dimensionToCoordinates(
+                                                input,
+                                                lastVertex,
+                                                ghostPoint ? Math.atan2(ghostPoint.y - lastVertex.y, ghostPoint.x - lastVertex.x) : 0
+                                            );
+
+                                            if (coords) {
+                                                // Create new vertex and segment
+                                                const newVertex: BuildingVertex = {
+                                                    id: newId('v'),
+                                                    x: coords.x,
+                                                    y: coords.y
+                                                };
+
+                                                const newSegment: BuildingWallSegment = {
+                                                    id: newId('seg'),
+                                                    a: lastWallVertexId!,
+                                                    b: newVertex.id,
+                                                    material: wallProperties.material,
+                                                    thickness: wallProperties.thickness
+                                                };
+
+                                                pushHistory();
+                                                setVertices(prev => [...prev, newVertex]);
+                                                setSegments(prev => [...prev, newSegment]);
+                                                setLastWallVertexId(newVertex.id);
+                                            }
+                                        }
+                                    }}
+                                    autoFocus
+                                />
+                            </div>
+                        )}
+
+                        {/* Quick Dimension Presets - Moved to left-center to avoid overlap */}
+                        {mode === 'DRAW' && lastWallVertexId && (
+                            <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-20">
+                                <QuickDimensionPresets
+                                    onSelect={(length) => {
+                                        const lastVertex = vertices.find(v => v.id === lastWallVertexId);
+                                        if (lastVertex && ghostPoint) {
+                                            const angle = Math.atan2(ghostPoint.y - lastVertex.y, ghostPoint.x - lastVertex.x);
+                                            const coords = {
+                                                x: lastVertex.x + length * Math.cos(angle),
+                                                y: lastVertex.y + length * Math.sin(angle)
+                                            };
+
+                                            const newVertex: BuildingVertex = {
+                                                id: newId('v'),
+                                                x: coords.x,
+                                                y: coords.y
+                                            };
+
+                                            const newSegment: BuildingWallSegment = {
+                                                id: newId('seg'),
+                                                a: lastWallVertexId!,
+                                                b: newVertex.id,
+                                                material: wallProperties.material,
+                                                thickness: wallProperties.thickness
+                                            };
+
+                                            pushHistory();
+                                            setVertices(prev => [...prev, newVertex]);
+                                            setSegments(prev => [...prev, newSegment]);
+                                            setLastWallVertexId(newVertex.id);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        )}
+
                         {showLayerPanel && (
                             <div className="absolute top-4 right-4 z-10 w-48 bg-slate-800/90 backdrop-blur-sm rounded-lg border border-slate-700 shadow-xl p-3 animate-in slide-in-from-right duration-200">
                                 <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Layers</h3>
@@ -1389,12 +1989,47 @@ export function ImprovedWallEditor({
                                             </span>
                                         </label>
                                     ))}
+
+                                    {/* Blueprint Controls */}
+                                    {blueprintImage && (
+                                        <div className="pt-2 mt-2 border-t border-slate-700">
+                                            <label className="flex items-center gap-2 cursor-pointer group mb-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={showBlueprint}
+                                                    onChange={() => setShowBlueprint(!showBlueprint)}
+                                                    className="w-3 h-3 rounded border-slate-600 bg-slate-900 text-blue-500"
+                                                />
+                                                <span className="text-xs text-slate-400 group-hover:text-white capitalize transition-colors">
+                                                    Blueprint Overlay
+                                                </span>
+                                            </label>
+
+                                            {showBlueprint && (
+                                                <div className="pl-5 pr-1">
+                                                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                                                        <span>Opacity</span>
+                                                        <span>{Math.round(blueprintOpacity * 100)}%</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min="0.1"
+                                                        max="1"
+                                                        step="0.05"
+                                                        value={blueprintOpacity}
+                                                        onChange={(e) => setBlueprintOpacity(parseFloat(e.target.value))}
+                                                        className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
-                        {/* Stats Panel */}
-                        <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
+                        {/* Stats Panel - Bottom right to avoid all overlaps */}
+                        <div className="absolute bottom-20 right-4 z-10 flex flex-col gap-2">
                             <div className="bg-slate-800/80 backdrop-blur-md rounded-lg border border-slate-700 p-3 shadow-xl text-[10px] font-mono text-slate-400 font-medium">
                                 <div>VERTICES: {vertices.length}</div>
                                 <div>WALLS: {segments.length}</div>
@@ -1402,6 +2037,41 @@ export function ImprovedWallEditor({
                                 <div className="mt-2 text-blue-400 uppercase tracking-tighter font-bold">MODE: {mode}</div>
                             </div>
                         </div>
+
+                        {/* Calibration Dialog */}
+                        {showCalibrationDialog && (
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-slate-800 p-6 rounded-xl border border-slate-600 shadow-2xl w-80">
+                                <h3 className="text-lg font-bold text-white mb-4">Calibrate Scale</h3>
+                                <p className="text-slate-400 text-sm mb-4">
+                                    Enter the actual distance in feet for the line you just drew ({Math.round(calibrationDistancePx)}px).
+                                </p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        value={calibrationLengthFt}
+                                        onChange={(e) => setCalibrationLengthFt(e.target.value)}
+                                        placeholder="Distance (ft)"
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white"
+                                        autoFocus
+                                    />
+                                    <button
+                                        onClick={applyCalibration}
+                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded font-bold"
+                                    >
+                                        Set
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowCalibrationDialog(false);
+                                        setCalibrationPoints([]);
+                                    }}
+                                    className="mt-4 text-xs text-slate-500 hover:text-slate-300 w-full text-center"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
 
                         {/* Drawing Helper */}
                         {mode === 'DRAW' && vertices.length > 0 && (
@@ -1419,15 +2089,27 @@ export function ImprovedWallEditor({
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
                             onWheel={handleWheel}
-                            draggable={mode === 'PAN'}
+                            onDragEnd={(e) => {
+                                if (e.target === e.target.getStage()) {
+                                    setStagePos(e.target.position());
+                                }
+                            }}
+                            draggable={mode === 'PAN' || isSpacePressed}
                             scaleX={scale}
                             scaleY={scale}
                             x={stagePos.x}
                             y={stagePos.y}
                             className="bg-slate-900 canvas-stage"
+                            style={{
+                                cursor: isSpacePressed || mode === 'PAN'
+                                    ? 'grab'
+                                    : (mode === 'DRAW' || mode === 'ELECTRIC_RUN' || mode === 'COMPONENT')
+                                        ? 'crosshair'
+                                        : 'default'
+                            }}
                         >
                             {/* Blueprint Background Layer */}
-                            {blueprintImage && (
+                            {blueprintImage && showBlueprint && (
                                 <Layer>
                                     <Group
                                         x={blueprintPosition.x}
@@ -1455,6 +2137,22 @@ export function ImprovedWallEditor({
                                                 strokeWidth={0.5}
                                             />
                                         ))}
+                                        {/* Calibration Line */}
+                                        {mode === 'CALIBRATE' && calibrationPoints.length > 0 && (
+                                            <>
+                                                {calibrationPoints.map((p, i) => (
+                                                    <Circle key={i} x={p.x} y={p.y} radius={5} fill="purple" />
+                                                ))}
+                                                {calibrationPoints.length === 2 && (
+                                                    <Line
+                                                        points={[calibrationPoints[0].x, calibrationPoints[0].y, calibrationPoints[1].x, calibrationPoints[1].y]}
+                                                        stroke="purple"
+                                                        strokeWidth={2}
+                                                        dash={[10, 5]}
+                                                    />
+                                                )}
+                                            </>
+                                        )}
                                         {Array.from({ length: Math.ceil(stageSize.height / GRID_SIZE) + 1 }).map((_, i) => (
                                             <Line
                                                 key={`grid-h-${i}`}
@@ -1560,6 +2258,54 @@ export function ImprovedWallEditor({
                                                 </React.Fragment>
                                             )}
                                         </React.Fragment>
+                                    );
+                                })}
+
+                                {/* Rooms Visualization */}
+                                {showRoomLabels && detectedRooms.map((room, idx) => {
+                                    const points = room.vertices.flatMap((v: any) => [v.x, v.y]);
+                                    return (
+                                        <Group key={`room-${idx}`}>
+                                            <Line
+                                                points={points}
+                                                fill="rgba(56, 189, 248, 0.1)"
+                                                closed={true}
+                                                stroke="rgba(56, 189, 248, 0.3)"
+                                                strokeWidth={1}
+                                                listening={false}
+                                            />
+                                            <Group x={room.center.x} y={room.center.y}>
+                                                <Rect
+                                                    x={-50}
+                                                    y={-20}
+                                                    width={100}
+                                                    height={40}
+                                                    fill="rgba(15, 23, 42, 0.8)"
+                                                    cornerRadius={4}
+                                                    stroke="rgba(56, 189, 248, 0.5)"
+                                                    strokeWidth={1}
+                                                />
+                                                <Text
+                                                    x={-50}
+                                                    y={-15}
+                                                    width={100}
+                                                    text={suggestRoomName(room)}
+                                                    fill="#38bdf8"
+                                                    fontSize={12}
+                                                    fontStyle="bold"
+                                                    align="center"
+                                                />
+                                                <Text
+                                                    x={-50}
+                                                    y={2}
+                                                    width={100}
+                                                    text={`${Math.round(room.area)} sq ft`}
+                                                    fill="#94a3b8"
+                                                    fontSize={10}
+                                                    align="center"
+                                                />
+                                            </Group>
+                                        </Group>
                                     );
                                 })}
 
@@ -1729,9 +2475,27 @@ export function ImprovedWallEditor({
                                     );
                                 })}
 
-                                {/* DRAW mode placement ghost */}
+                                {/* DRAW mode placement ghost & Crosshairs */}
                                 {mode === 'DRAW' && ghostPoint && (
                                     <Group>
+                                        {/* Full Screen Crosshairs */}
+                                        <Line
+                                            points={[-50000, ghostPoint.y, 50000, ghostPoint.y]}
+                                            stroke="#ef4444" // red color for visibility
+                                            strokeWidth={1}
+                                            dash={[4, 4]}
+                                            opacity={0.8}
+                                            listening={false}
+                                        />
+                                        <Line
+                                            points={[ghostPoint.x, -50000, ghostPoint.x, 50000]}
+                                            stroke="#ef4444"
+                                            strokeWidth={1}
+                                            dash={[4, 4]}
+                                            opacity={0.8}
+                                            listening={false}
+                                        />
+
                                         <Circle
                                             x={ghostPoint.x}
                                             y={ghostPoint.y}
@@ -2035,6 +2799,83 @@ export function ImprovedWallEditor({
                                         </>
                                     );
                                 })()}
+
+                                {/* Tape Measure Visualization */}
+                                {mode === 'MEASURE' && measurementPoints.length > 0 && (
+                                    <>
+                                        {/* Start point */}
+                                        <Circle
+                                            x={measurementPoints[0].x}
+                                            y={measurementPoints[0].y}
+                                            radius={5}
+                                            fill="#2dd4bf"
+                                            stroke="#ffffff"
+                                            strokeWidth={1}
+                                        />
+
+                                        {/* Line to ghost point (preview) or second point */}
+                                        {(() => {
+                                            const endPoint = measurementPoints.length === 2
+                                                ? measurementPoints[1]
+                                                : ghostPoint;
+
+                                            if (endPoint) {
+                                                const start = measurementPoints[0];
+                                                const dx = endPoint.x - start.x;
+                                                const dy = endPoint.y - start.y;
+                                                const distPx = Math.sqrt(dx * dx + dy * dy);
+                                                const distFt = distPx * (scaleFtPerUnit || 0.05);
+
+                                                return (
+                                                    <>
+                                                        <Line
+                                                            points={[start.x, start.y, endPoint.x, endPoint.y]}
+                                                            stroke="#2dd4bf"
+                                                            strokeWidth={2}
+                                                            dash={[10, 5]}
+                                                        />
+                                                        {measurementPoints.length === 2 && (
+                                                            <Circle
+                                                                x={endPoint.x}
+                                                                y={endPoint.y}
+                                                                radius={5}
+                                                                fill="#2dd4bf"
+                                                                stroke="#ffffff"
+                                                                strokeWidth={1}
+                                                            />
+                                                        )}
+                                                        {/* Distance Label */}
+                                                        <Group x={(start.x + endPoint.x) / 2} y={(start.y + endPoint.y) / 2 - 20}>
+                                                            <Rect
+                                                                x={-40}
+                                                                y={-12}
+                                                                width={80}
+                                                                height={24}
+                                                                fill="#111827"
+                                                                stroke="#2dd4bf"
+                                                                strokeWidth={1}
+                                                                cornerRadius={4}
+                                                                opacity={0.9}
+                                                            />
+                                                            <Text
+                                                                x={-40}
+                                                                y={-7}
+                                                                width={80}
+                                                                text={`${distFt.toFixed(2)}'`}
+                                                                fill="#2dd4bf"
+                                                                fontSize={14}
+                                                                fontStyle="bold"
+                                                                align="center"
+                                                            />
+                                                        </Group>
+                                                    </>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                    </>
+                                )}
+
                             </Layer>
                         </Stage>
 
@@ -2316,6 +3157,6 @@ export function ImprovedWallEditor({
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
             />
-        </>
+        </div>
     );
 }

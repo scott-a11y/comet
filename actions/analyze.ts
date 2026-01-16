@@ -95,6 +95,28 @@ export const startFloorPlanAnalysis = createServerAction()
         }
       }
 
+      // If it's a local image (localhost), convert to base64 so OpenAI can access it
+      const isLocalhost = ['localhost', '127.0.0.1'].some(host => url.hostname.endsWith(host));
+
+      if (isValidImage && isLocalhost) {
+        console.log('[Floor Plan Analysis] Local image detected, converting to base64...');
+        try {
+          const imageResponse = await fetch(input.imageUrl);
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch local image: ${imageResponse.statusText}`);
+          }
+          const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+          const base64 = imageBuffer.toString('base64');
+          const mimeType = imageResponse.headers.get('content-type') || 'image/png';
+          imageUrlToAnalyze = `data:${mimeType};base64,${base64}`;
+          console.log('[Floor Plan Analysis] Local image converted to base64 successfully');
+        } catch (localError) {
+          console.error('[Floor Plan Analysis] Failed to process local image:', localError);
+          // We'll throw here because passing localhost to OpenAI is guaranteed to fail
+          throw new Error('Failed to process local image for analysis.');
+        }
+      }
+
       console.log('[Floor Plan Analysis] Calling OpenAI Vision API...');
 
       // Add timeout wrapper
@@ -103,7 +125,7 @@ export const startFloorPlanAnalysis = createServerAction()
         messages: [
           {
             role: "system",
-            content: `Analyze this floor plan image and extract dimensions and equipment locations.
+            content: `Analyze this floor plan image and extract dimensions, equipment locations, and basic geometry.
 Return JSON with the following structure:
 - width: number (feet)
 - length: number (feet)
@@ -111,9 +133,13 @@ Return JSON with the following structure:
 - summary: string description
 - detectedEquipment: list of machines found (type, x, y coordinates normalized 0-1)
 - detectedPorts: list of utility connection points found (type: 'electrical', 'dust', 'pneumatic', and normalized x, y coordinates)
+- walls: list of wall segments (startX, startY, endX, endY normalized 0-1)
+- doors: list of doors (x, y normalized 0-1, optional width as ratio)
+- windows: list of windows (x, y normalized 0-1, optional width as ratio)
 
 Be precise with machine identities: look for table saws, CNC machines, planers, jointers, and workbenches.
-If dimensions are clearly marked in the image, use those exact values. Otherwise, estimate based on typical industrial standards.`
+If dimensions are clearly marked in the image, use those exact values. Otherwise, estimate based on typical industrial standards.
+For walls, approximate the main bounding walls and interior partitions. Ignore minor details.`
           },
           {
             role: "user",

@@ -24,6 +24,22 @@ export const analysisDataSchema = z.object({
             y: z.number(),
         }),
     })).optional(),
+    walls: z.array(z.object({
+        startX: z.number().min(0).max(1),
+        startY: z.number().min(0).max(1),
+        endX: z.number().min(0).max(1),
+        endY: z.number().min(0).max(1),
+    })).optional(),
+    doors: z.array(z.object({
+        x: z.number().min(0).max(1),
+        y: z.number().min(0).max(1),
+        width: z.number().optional(), // ratio of total width
+    })).optional(),
+    windows: z.array(z.object({
+        x: z.number().min(0).max(1),
+        y: z.number().min(0).max(1),
+        width: z.number().optional(), // ratio of total width
+    })).optional(),
 });
 
 export type AnalysisData = z.infer<typeof analysisDataSchema>;

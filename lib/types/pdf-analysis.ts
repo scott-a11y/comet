@@ -31,6 +31,32 @@ export interface FloorPlanData {
   length: number;
   height?: number;
   summary: string;
+  detectedEquipment?: Array<{
+    type: string;
+    confidence: number;
+    position: { x: number; y: number };
+    estimatedDimensions?: { width: number; depth: number };
+  }>;
+  detectedPorts?: Array<{
+    type: 'electrical' | 'dust' | 'pneumatic';
+    position: { x: number; y: number };
+  }>;
+  walls?: Array<{
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+  }>;
+  doors?: Array<{
+    x: number;
+    y: number;
+    width?: number;
+  }>;
+  windows?: Array<{
+    x: number;
+    y: number;
+    width?: number;
+  }>;
 }
 
 // Legacy interface for backward compatibility
