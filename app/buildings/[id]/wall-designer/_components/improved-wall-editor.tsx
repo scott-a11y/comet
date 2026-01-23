@@ -138,9 +138,118 @@ function snapToGrid(p: { x: number; y: number }, gridSize = GRID_SIZE) {
     };
 }
 
-function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
-    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-}
+const distance = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+};
+
+// Memoized Grid Component for high performance
+const GridLayer = React.memo(({ width, height, gridSize, show }: { width: number, height: number, gridSize: number, show: boolean }) => {
+    if (!show) return null;
+
+    return (
+        <Layer listening={false}>
+            <Rect
+                x={0}
+                y={0}
+                width={width}
+                height={height}
+                fillPriority="pattern"
+                fillPatternImage={(() => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = gridSize;
+                    canvas.height = gridSize;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.strokeStyle = '#334155';
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(gridSize, 0);
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(0, gridSize);
+                        ctx.stroke();
+                    }
+                    return canvas;
+                })() as any}
+                opacity={0.5}
+            />
+        </Layer>
+    );
+});
+GridLayer.displayName = 'GridLayer';
+
+// Memoized Wall Segment Component
+const MemoizedWall = React.memo(({
+    seg,
+    v1,
+    v2,
+    isSelected,
+    lengthFt,
+    scaleFtPerUnit,
+    onClick,
+    onDragStart,
+    onDragMove,
+    onDragEnd
+}: {
+    seg: BuildingWallSegment,
+    v1: BuildingVertex,
+    v2: BuildingVertex,
+    isSelected: boolean,
+    lengthFt: string | null,
+    scaleFtPerUnit: number | null,
+    onClick: (e: any) => void,
+    onDragStart: (e: any) => void,
+    onDragMove: (e: any) => void,
+    onDragEnd: (e: any) => void
+}) => {
+    const thicknessFt = seg.thickness || 0.5;
+    const thicknessPx = scaleFtPerUnit ? (thicknessFt / scaleFtPerUnit) : 6;
+
+    return (
+        <Group>
+            <Line
+                points={[v1.x, v1.y, v2.x, v2.y]}
+                stroke={isSelected ? '#60a5fa' : '#f1f5f9'}
+                strokeWidth={Math.max(thicknessPx, 6)}
+                lineCap="round"
+                lineJoin="round"
+                onClick={onClick}
+                onDragStart={onDragStart}
+                onDragMove={onDragMove}
+                onDragEnd={onDragEnd}
+                hitStrokeWidth={20}
+                listening={true}
+                perfectDrawEnabled={false}
+            />
+            {lengthFt && (
+                <Group x={(v1.x + v2.x) / 2} y={(v1.y + v2.y) / 2}>
+                    <Rect
+                        x={-20}
+                        y={-18}
+                        width={40}
+                        height={16}
+                        fill="#1e293b"
+                        opacity={0.6}
+                        cornerRadius={2}
+                        listening={false}
+                    />
+                    <Text
+                        x={-20}
+                        y={-15}
+                        width={40}
+                        text={`${lengthFt}'`}
+                        fontSize={12}
+                        fill={isSelected ? '#60a5fa' : '#f1f5f9'}
+                        fontStyle="bold"
+                        align="center"
+                        listening={false}
+                    />
+                </Group>
+            )}
+        </Group>
+    );
+});
+MemoizedWall.displayName = 'MemoizedWall';
 
 // Blueprint Image Component - Uses useImage hook to load image for Konva
 function BlueprintImage({ src }: { src: string }) {
@@ -1475,25 +1584,29 @@ export function ImprovedWallEditor({
         };
     }, []);
 
-    // Notify parent of changes
+    // Notify parent of changes - Debounced to prevent excessive re-renders during drawing
     useEffect(() => {
-        const geometry: BuildingFloorGeometry | null = (vertices.length > 0 || openings.length > 0 || electricalEntries.length > 0 || systemRuns.length > 0 || components.length > 0) ? {
-            vertices,
-            segments,
-            openings,
-            electricalEntries,
-            systemRuns,
-            components,
-            layerVisibility,
-            version: 1,
-        } : null;
+        const timer = setTimeout(() => {
+            const geometry: BuildingFloorGeometry | null = (vertices.length > 0 || openings.length > 0 || electricalEntries.length > 0 || systemRuns.length > 0 || components.length > 0) ? {
+                vertices,
+                segments,
+                openings,
+                electricalEntries,
+                systemRuns,
+                components,
+                layerVisibility,
+                version: 1,
+            } : null;
 
-        let validationError: string | null = null;
-        if (geometry && !scaleFtPerUnit) {
-            validationError = 'Please set the scale (ft per grid unit) before saving';
-        }
+            let validationError: string | null = null;
+            if (geometry && !scaleFtPerUnit) {
+                validationError = 'Please set the scale (ft per grid unit) before saving';
+            }
 
-        onChange({ geometry, scaleFtPerUnit, validationError });
+            onChange({ geometry, scaleFtPerUnit, validationError });
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timer);
     }, [vertices, segments, openings, electricalEntries, systemRuns, components, layerVisibility, scaleFtPerUnit, onChange]);
 
     const renderToolbar = () => {
@@ -2124,43 +2237,29 @@ export function ImprovedWallEditor({
                                 </Layer>
                             )}
 
-                            <Layer>
+                            <GridLayer
+                                width={stageSize.width * 20}
+                                height={stageSize.height * 20}
+                                gridSize={GRID_SIZE}
+                                show={showGrid}
+                            />
 
-                                {/* Grid */}
-                                {showGrid && (
+                            <Layer>
+                                {/* Calibration Line Overlay */}
+                                {/* Calibration Line Overlay */}
+                                {mode === 'CALIBRATE' && calibrationPoints.length > 0 && (
                                     <>
-                                        {Array.from({ length: Math.ceil(stageSize.width / GRID_SIZE) + 1 }).map((_, i) => (
-                                            <Line
-                                                key={`grid-v-${i}`}
-                                                points={[i * GRID_SIZE, 0, i * GRID_SIZE, stageSize.height]}
-                                                stroke="#334155"
-                                                strokeWidth={0.5}
-                                            />
+                                        {calibrationPoints.map((p, i) => (
+                                            <Circle key={i} x={p.x} y={p.y} radius={5} fill="purple" />
                                         ))}
-                                        {/* Calibration Line */}
-                                        {mode === 'CALIBRATE' && calibrationPoints.length > 0 && (
-                                            <>
-                                                {calibrationPoints.map((p, i) => (
-                                                    <Circle key={i} x={p.x} y={p.y} radius={5} fill="purple" />
-                                                ))}
-                                                {calibrationPoints.length === 2 && (
-                                                    <Line
-                                                        points={[calibrationPoints[0].x, calibrationPoints[0].y, calibrationPoints[1].x, calibrationPoints[1].y]}
-                                                        stroke="purple"
-                                                        strokeWidth={2}
-                                                        dash={[10, 5]}
-                                                    />
-                                                )}
-                                            </>
+                                        {calibrationPoints.length === 2 && (
+                                            <Line
+                                                points={[calibrationPoints[0].x, calibrationPoints[0].y, calibrationPoints[1].x, calibrationPoints[1].y]}
+                                                stroke="purple"
+                                                strokeWidth={2}
+                                                dash={[10, 5]}
+                                            />
                                         )}
-                                        {Array.from({ length: Math.ceil(stageSize.height / GRID_SIZE) + 1 }).map((_, i) => (
-                                            <Line
-                                                key={`grid-h-${i}`}
-                                                points={[0, i * GRID_SIZE, stageSize.width, i * GRID_SIZE]}
-                                                stroke="#334155"
-                                                strokeWidth={0.5}
-                                            />
-                                        ))}
                                     </>
                                 )}
 
@@ -2170,102 +2269,68 @@ export function ImprovedWallEditor({
                                     const v2 = vertices.find(v => v.id === seg.b);
                                     if (!v1 || !v2) return null;
 
-                                    const isSelected = seg.id === selectedSegmentId;
-                                    const lengthFt = getSegmentLengthFt(seg);
-
-                                    // Calculate wall thickness in pixels (default 6" = 0.5ft)
-                                    const thicknessFt = seg.thickness || 0.5;
-                                    const thicknessPx = scaleFtPerUnit ? (thicknessFt / scaleFtPerUnit) : 6;
-
                                     return (
-                                        <React.Fragment key={seg.id}>
-                                            {/* Main wall line - ALWAYS VISIBLE */}
-                                            <Line
-                                                points={[v1.x, v1.y, v2.x, v2.y]}
-                                                stroke={isSelected ? '#60a5fa' : '#f1f5f9'}
-                                                strokeWidth={Math.max(thicknessPx, 6)}
-                                                lineCap="round"
-                                                lineJoin="round"
-                                                onClick={(e) => {
-                                                    e.cancelBubble = true;
-                                                    setSelectedSegmentId(seg.id);
-                                                    setSelectedVertexId(null);
-                                                    setSelectedOpeningId(null);
-                                                    setSelectedEntryId(null);
-                                                    setSelectedRunId(null);
-                                                    setSelectedComponentId(null);
-                                                }}
-                                                onDragStart={(e) => {
-                                                    e.cancelBubble = true;
-                                                    pushHistory();
-                                                    setSelectedSegmentId(seg.id);
-                                                }}
-                                                onDragMove={(e) => {
-                                                    if (mode !== 'EDIT') return;
-                                                    // Move both vertices of the segment
-                                                    const dx = e.target.x();
-                                                    const dy = e.target.y();
-                                                    // Reset shape position so it doesn't drift
-                                                    e.target.x(0);
-                                                    e.target.y(0);
+                                        <MemoizedWall
+                                            key={seg.id}
+                                            seg={seg}
+                                            v1={v1}
+                                            v2={v2}
+                                            isSelected={seg.id === selectedSegmentId}
+                                            lengthFt={getSegmentLengthFt(seg)}
+                                            scaleFtPerUnit={scaleFtPerUnit}
+                                            onClick={(e) => {
+                                                e.cancelBubble = true;
+                                                setSelectedSegmentId(seg.id);
+                                                setSelectedVertexId(null);
+                                                setSelectedOpeningId(null);
+                                                setSelectedEntryId(null);
+                                                setSelectedRunId(null);
+                                                setSelectedComponentId(null);
+                                            }}
+                                            onDragStart={(e) => {
+                                                e.cancelBubble = true;
+                                                pushHistory();
+                                                setSelectedSegmentId(seg.id);
+                                            }}
+                                            onDragMove={(e: any) => {
+                                                if (mode !== 'EDIT') return;
+                                                // Move both vertices of the segment
+                                                const dx = e.target.x();
+                                                const dy = e.target.y();
+                                                // Reset shape position so it doesn't drift
+                                                e.target.x(0);
+                                                e.target.y(0);
 
-                                                    setVertices(prev => prev.map(v => {
-                                                        if (v.id === seg.a || v.id === seg.b) {
-                                                            return { ...v, x: v.x + dx, y: v.y + dy };
-                                                        }
-                                                        return v;
-                                                    }));
-                                                }}
-                                                onDragEnd={(e) => {
-                                                    if (snapToGridEnabled) {
-                                                        setVertices(prev => prev.map(vert => {
-                                                            if (vert.id === seg.a || vert.id === seg.b) {
-                                                                const snapped = snapToGrid(vert, GRID_SIZE);
-                                                                return { ...vert, ...snapped };
-                                                            }
-                                                            return vert;
-                                                        }));
+                                                setVertices(prev => prev.map(v => {
+                                                    if (v.id === seg.a || v.id === seg.b) {
+                                                        return { ...v, x: v.x + dx, y: v.y + dy };
                                                     }
-                                                }}
-                                                hitStrokeWidth={20}
-                                                listening={true}
-                                                perfectDrawEnabled={false}
-                                            />
-                                            {/* Length label */}
-                                            {lengthFt && (
-                                                <React.Fragment>
-                                                    <Rect
-                                                        x={(v1.x + v2.x) / 2 - 20}
-                                                        y={(v1.y + v2.y) / 2 - 18}
-                                                        width={40}
-                                                        height={16}
-                                                        fill="#1e293b"
-                                                        opacity={0.6}
-                                                        cornerRadius={2}
-                                                        listening={false}
-                                                    />
-                                                    <Text
-                                                        x={(v1.x + v2.x) / 2 - 20}
-                                                        y={(v1.y + v2.y) / 2 - 15}
-                                                        width={40}
-                                                        text={`${lengthFt}'`}
-                                                        fontSize={12}
-                                                        fill={isSelected ? '#60a5fa' : '#f1f5f9'}
-                                                        fontStyle="bold"
-                                                        align="center"
-                                                        listening={false}
-                                                    />
-                                                </React.Fragment>
-                                            )}
-                                        </React.Fragment>
+                                                    return v;
+                                                }));
+                                            }}
+                                            onDragEnd={() => {
+                                                if (snapToGridEnabled) {
+                                                    setVertices(prev => prev.map(vert => {
+                                                        if (vert.id === seg.a || vert.id === seg.b) {
+                                                            const snapped = snapToGrid(vert, GRID_SIZE);
+                                                            return { ...vert, ...snapped };
+                                                        }
+                                                        return vert;
+                                                    }));
+                                                }
+                                            }}
+                                        />
                                     );
                                 })}
 
                                 {/* Rooms Visualization */}
                                 {showRoomLabels && detectedRooms.map((room, idx) => {
-                                    const points = room.vertices.flatMap((v: any) => [v.x, v.y]);
+                                    const points = room.vertices.flatMap((vId: string) => {
+                                        const v = vertices.find(v => v.id === vId);
+                                        return v ? [v.x, v.y] : [];
+                                    });
                                     return (
-                                        <Group key={`room-${idx}`}>
+                                        <Group key={`room-${room.id || idx}`}>
                                             <Line
                                                 points={points}
                                                 fill="rgba(56, 189, 248, 0.1)"
@@ -2274,7 +2339,7 @@ export function ImprovedWallEditor({
                                                 strokeWidth={1}
                                                 listening={false}
                                             />
-                                            <Group x={room.center.x} y={room.center.y}>
+                                            <Group x={room.centroid.x} y={room.centroid.y}>
                                                 <Rect
                                                     x={-50}
                                                     y={-20}

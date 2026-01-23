@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, memo } from "react";
 import { Text } from "@react-three/drei";
 import type { Equipment } from "@prisma/client";
 import * as THREE from "three";
@@ -12,7 +12,7 @@ interface EquipmentModelProps {
     onBoundsUpdate?: (id: string, bounds: THREE.Box3) => void;
 }
 
-export function EquipmentModel({
+export const EquipmentModel = memo(function EquipmentModel({
     item,
     position: externalPosition,
     isColliding = false,
@@ -147,4 +147,4 @@ export function EquipmentModel({
             )}
         </group>
     );
-}
+});

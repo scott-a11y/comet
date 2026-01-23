@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { BuildingFloorGeometry, BuildingWallSegment, BuildingVertex, Component, SystemRun } from "@/lib/types/building-geometry";
 
 // Zod Schema for Wall/Segment updates
 const WallSegmentSchema = z.object({
@@ -11,7 +12,7 @@ const WallSegmentSchema = z.object({
     a: z.string(), // vertex ID
     b: z.string(), // vertex ID
     thickness: z.number().optional(),
-    material: z.string().optional(),
+    material: z.enum(['brick', 'concrete', 'drywall', 'wood', 'steel', 'glass']).optional(),
 });
 
 const VertexSchema = z.object({
@@ -20,6 +21,27 @@ const VertexSchema = z.object({
     x: z.number(),
     y: z.number(),
 });
+
+/**
+ * Parse floor geometry from Prisma JSON with type safety
+ */
+function parseFloorGeometry(json: unknown): BuildingFloorGeometry | null {
+    if (!json || typeof json !== 'object') return null;
+    const geo = json as Record<string, unknown>;
+
+    // Ensure minimum structure
+    return {
+        version: 1 as const,
+        vertices: (geo.vertices as BuildingVertex[]) || [],
+        segments: (geo.segments as BuildingWallSegment[]) || [],
+        openings: geo.openings as BuildingFloorGeometry['openings'],
+        electricalEntries: geo.electricalEntries as BuildingFloorGeometry['electricalEntries'],
+        components: (geo.components as Component[]) || [],
+        systemRuns: (geo.systemRuns as SystemRun[]) || [],
+        layerVisibility: geo.layerVisibility as BuildingFloorGeometry['layerVisibility'],
+        ringVertexIds: geo.ringVertexIds as string[],
+    };
+}
 
 /**
  * Update a wall segment with optimistic UI support
@@ -34,8 +56,6 @@ export async function updateWallSegmentAction(rawInput: unknown) {
     const segment = parsed.data;
 
     try {
-        // Update in database (you'll need to add a WallSegment table or store in floorGeometry JSON)
-        // For now, we'll update the building's floorGeometry
         const building = await prisma.shopBuilding.findUnique({
             where: { id: segment.buildingId },
             select: { floorGeometry: true }
@@ -45,23 +65,24 @@ export async function updateWallSegmentAction(rawInput: unknown) {
             return { success: false, error: "Building not found" };
         }
 
-        const geometry = building.floorGeometry as any;
-        if (geometry?.segments) {
-            const segmentIndex = geometry.segments.findIndex((s: any) => s.id === segment.id);
-            if (segmentIndex !== -1) {
-                geometry.segments[segmentIndex] = {
-                    ...geometry.segments[segmentIndex],
-                    ...segment
-                };
-
-                await prisma.shopBuilding.update({
-                    where: { id: segment.buildingId },
-                    data: { floorGeometry: geometry }
-                });
-            }
+        const geometry = parseFloorGeometry(building.floorGeometry);
+        if (!geometry) {
+            return { success: false, error: "No floor geometry" };
         }
 
-        // Revalidate the building page
+        const segmentIndex = geometry.segments.findIndex(s => s.id === segment.id);
+        if (segmentIndex !== -1) {
+            geometry.segments[segmentIndex] = {
+                ...geometry.segments[segmentIndex],
+                ...segment
+            };
+
+            await prisma.shopBuilding.update({
+                where: { id: segment.buildingId },
+                data: { floorGeometry: geometry as object }
+            });
+        }
+
         revalidatePath(`/buildings/${segment.buildingId}`);
 
         return { success: true, data: segment };
@@ -94,21 +115,23 @@ export async function updateVertexAction(rawInput: unknown) {
             return { success: false, error: "Building not found" };
         }
 
-        const geometry = building.floorGeometry as any;
-        if (geometry?.vertices) {
-            const vertexIndex = geometry.vertices.findIndex((v: any) => v.id === vertex.id);
-            if (vertexIndex !== -1) {
-                geometry.vertices[vertexIndex] = {
-                    ...geometry.vertices[vertexIndex],
-                    x: vertex.x,
-                    y: vertex.y
-                };
+        const geometry = parseFloorGeometry(building.floorGeometry);
+        if (!geometry) {
+            return { success: false, error: "No floor geometry" };
+        }
 
-                await prisma.shopBuilding.update({
-                    where: { id: vertex.buildingId },
-                    data: { floorGeometry: geometry }
-                });
-            }
+        const vertexIndex = geometry.vertices.findIndex(v => v.id === vertex.id);
+        if (vertexIndex !== -1) {
+            geometry.vertices[vertexIndex] = {
+                ...geometry.vertices[vertexIndex],
+                x: vertex.x,
+                y: vertex.y
+            };
+
+            await prisma.shopBuilding.update({
+                where: { id: vertex.buildingId },
+                data: { floorGeometry: geometry as object }
+            });
         }
 
         revalidatePath(`/buildings/${vertex.buildingId}`);
@@ -154,25 +177,33 @@ export async function updateEquipmentPlacementAction(rawInput: unknown) {
             return { success: false, error: "Building not found" };
         }
 
-        const geometry = building.floorGeometry as any;
+        const geometry = parseFloorGeometry(building.floorGeometry);
         if (!geometry) {
             return { success: false, error: "No floor geometry" };
         }
 
-        if (!geometry.equipment) {
-            geometry.equipment = [];
-        }
+        // Create component from equipment data
+        const component: Component = {
+            id: equipment.id,
+            category: 'equipment',
+            name: equipment.name,
+            x: equipment.x,
+            y: equipment.y,
+            width: equipment.width,
+            depth: equipment.depth,
+            rotation: equipment.rotation,
+        };
 
-        const eqIndex = geometry.equipment.findIndex((e: any) => e.id === equipment.id);
-        if (eqIndex !== -1) {
-            geometry.equipment[eqIndex] = equipment;
+        const eqIndex = geometry.components?.findIndex(e => e.id === equipment.id) ?? -1;
+        if (eqIndex !== -1 && geometry.components) {
+            geometry.components[eqIndex] = component;
         } else {
-            geometry.equipment.push(equipment);
+            geometry.components = [...(geometry.components || []), component];
         }
 
         await prisma.shopBuilding.update({
             where: { id: equipment.buildingId },
-            data: { floorGeometry: geometry }
+            data: { floorGeometry: geometry as object }
         });
 
         revalidatePath(`/buildings/${equipment.buildingId}`);
@@ -215,32 +246,34 @@ export async function updateSystemRunAction(rawInput: unknown) {
             return { success: false, error: "Building not found" };
         }
 
-        const geometry = building.floorGeometry as any;
+        const geometry = parseFloorGeometry(building.floorGeometry);
         if (!geometry) {
             return { success: false, error: "No floor geometry" };
         }
 
-        if (!geometry.systemRuns) {
-            geometry.systemRuns = [];
-        }
+        // Map action type to SystemRun type
+        const systemRunType = run.type === 'DUST' ? 'DUST_COLLECTION'
+            : run.type === 'AIR' ? 'COMPRESSED_AIR'
+                : 'ELECTRICAL';
 
-        const runIndex = geometry.systemRuns.findIndex((r: any) => r.id === run.id);
-        if (runIndex !== -1) {
-            geometry.systemRuns[runIndex] = run;
+        const systemRun: SystemRun = {
+            id: run.id,
+            type: systemRunType,
+            points: run.points,
+            diameter: run.diameter,
+        };
+
+        const runIndex = geometry.systemRuns?.findIndex(r => r.id === run.id) ?? -1;
+        if (runIndex !== -1 && geometry.systemRuns) {
+            geometry.systemRuns[runIndex] = systemRun;
         } else {
-            geometry.systemRuns.push(run);
+            geometry.systemRuns = [...(geometry.systemRuns || []), systemRun];
         }
 
         await prisma.shopBuilding.update({
             where: { id: run.buildingId },
-            data: { floorGeometry: geometry }
+            data: { floorGeometry: geometry as object }
         });
-
-        // TODO: Trigger background job to recalculate pressure/voltage drop
-        // await client.sendEvent({
-        //   name: "engineering.recalculate_zone",
-        //   payload: { buildingId: run.buildingId, systemType: run.type }
-        // });
 
         revalidatePath(`/buildings/${run.buildingId}`);
 

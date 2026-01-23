@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import * as THREE from "three";
 import { Line } from "@react-three/drei";
 
@@ -15,7 +15,7 @@ interface SystemRoutingProps {
     height?: number; // Height at which to render the runs
 }
 
-export function SystemRouting({ systemRuns = [], height = 8 }: SystemRoutingProps) {
+export const SystemRouting = memo(function SystemRouting({ systemRuns = [], height = 8 }: SystemRoutingProps) {
 
     // Color coding for different system types
     const getSystemColor = (type: string) => {
@@ -117,4 +117,4 @@ export function SystemRouting({ systemRuns = [], height = 8 }: SystemRoutingProp
             })}
         </group>
     );
-}
+});

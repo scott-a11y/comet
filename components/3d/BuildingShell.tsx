@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import * as THREE from "three";
 import type { BuildingFloorGeometry } from "@/lib/types/building-geometry";
 
@@ -11,7 +11,7 @@ interface BuildingShellProps {
     floorGeometry?: BuildingFloorGeometry | null;
 }
 
-export function BuildingShell({ width, depth, height, floorGeometry }: BuildingShellProps) {
+export const BuildingShell = memo(function BuildingShell({ width, depth, height, floorGeometry }: BuildingShellProps) {
 
     const floorMesh = useMemo(() => {
         return new THREE.PlaneGeometry(width, depth);
@@ -91,4 +91,4 @@ export function BuildingShell({ width, depth, height, floorGeometry }: BuildingS
             />
         </group>
     );
-}
+});

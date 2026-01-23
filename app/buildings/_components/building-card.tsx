@@ -5,8 +5,22 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 
+interface Building {
+    id: number;
+    name: string | null;
+    widthFt: number | null;
+    depthFt: number | null;
+    notes?: string | null;
+    _count: {
+        equipment: number;
+        zones: number;
+        layouts: number;
+        designerLayouts?: number;
+    };
+}
+
 interface BuildingCardProps {
-    building: any;
+    building: Building;
 }
 
 export function BuildingCard({ building }: BuildingCardProps) {
@@ -14,7 +28,9 @@ export function BuildingCard({ building }: BuildingCardProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async (e: React.MouseEvent) => {
-        e.preventDefault(); // Prevent navigation
+        e.preventDefault();
+        e.stopPropagation();
+
         if (!confirm('Are you sure you want to delete this building? This action cannot be undone.')) {
             return;
         }
@@ -25,7 +41,9 @@ export function BuildingCard({ building }: BuildingCardProps) {
                 method: 'DELETE',
             });
 
-            if (!response.ok) throw new Error('Failed to delete');
+            if (!response.ok) {
+                throw new Error('Failed to delete');
+            }
 
             router.refresh();
         } catch (error) {

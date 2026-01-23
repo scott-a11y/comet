@@ -10,6 +10,7 @@ datasource db {
 
 model ShopBuilding {
   id                  Int              @id @default(autoincrement())
+  userId              String?          @map("user_id")
   name                String
   widthFt             Float?           @map("width_ft")
   depthFt             Float?           @map("depth_ft")
@@ -90,7 +91,7 @@ model Equipment {
   requiresHighVoltage Boolean                   @default(false) @map("requires_high_voltage")
   preferredZoneId     Int?                      @map("preferred_zone_id")
   shopBuilding        ShopBuilding              @relation(fields: [shopBuildingId], references: [id], onDelete: Cascade)
-  preferredZone       ShopZone?                 @relation(fields: [preferredZoneId], references: [id])
+  preferredZone       ShopZone?                 @relation(fields: [preferredZoneId], references: [id], onDelete: SetNull)
   powerSpecs          EquipmentPowerSpecs?
   dustSpecs           EquipmentDustSpecs?
   airSpecs            EquipmentAirSpecs?
@@ -221,10 +222,10 @@ model DustRun {
   staticPressureLoss Float?         @map("static_pressure_loss_in_wg")
 
   layout             LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  fromEquipment      Equipment?     @relation("DustRunFromEquipment", fields: [fromEquipmentId], references: [id])
-  toEquipment        Equipment?     @relation("DustRunToEquipment", fields: [toEquipmentId], references: [id])
-  fromUtility        UtilityPoint?  @relation("DustRunFromUtility", fields: [fromUtilityId], references: [id])
-  toUtility          UtilityPoint?  @relation("DustRunToUtility", fields: [toUtilityId], references: [id])
+  fromEquipment      Equipment?     @relation("DustRunFromEquipment", fields: [fromEquipmentId], references: [id], onDelete: SetNull)
+  toEquipment        Equipment?     @relation("DustRunToEquipment", fields: [toEquipmentId], references: [id], onDelete: SetNull)
+  fromUtility        UtilityPoint?  @relation("DustRunFromUtility", fields: [fromUtilityId], references: [id], onDelete: SetNull)
+  toUtility          UtilityPoint?  @relation("DustRunToUtility", fields: [toUtilityId], references: [id], onDelete: SetNull)
 
   @@index([layoutId])
   @@map("dust_runs")
@@ -239,7 +240,7 @@ model AirRun {
   lengthFt       Float          @map("length_ft")
   layout         LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
   fromUtility    UtilityPoint   @relation("AirRunFromUtility", fields: [fromUtilityId], references: [id])
-  toEquipment    Equipment?     @relation(fields: [toEquipmentId], references: [id])
+  toEquipment    Equipment?     @relation(fields: [toEquipmentId], references: [id], onDelete: SetNull)
 
   @@index([layoutId])
   @@map("air_runs")
@@ -443,8 +444,8 @@ model MaterialFlowPath {
   updatedAt        DateTime       @updatedAt @map("updated_at")
   
   layout           LayoutInstance @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  fromEntryPoint   EntryPoint?    @relation("FlowPathFrom", fields: [fromEntryPointId], references: [id])
-  toEntryPoint     EntryPoint?    @relation("FlowPathTo", fields: [toEntryPointId], references: [id])
+  fromEntryPoint   EntryPoint?    @relation("FlowPathFrom", fields: [fromEntryPointId], references: [id], onDelete: SetNull)
+  toEntryPoint     EntryPoint?    @relation("FlowPathTo", fields: [toEntryPointId], references: [id], onDelete: SetNull)
   
   @@index([layoutId])
   @@index([pathType])

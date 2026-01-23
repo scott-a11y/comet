@@ -1,11 +1,21 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { BuildingCard } from './_components/building-card';
+import { auth } from '@clerk/nextjs/server';
 
 export const dynamic = 'force-dynamic'
 
 async function getBuildings() {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return [];
+  }
+
   const buildings = await prisma.shopBuilding.findMany({
+    where: {
+      userId
+    },
     include: {
       _count: {
         select: {

@@ -115,7 +115,10 @@ export function DockableToolbar({
             )}
 
             {/* Main Content */}
-            <div className={`flex-1 ${isHorizontal ? 'flex flex-row items-center gap-2 overflow-x-auto' : 'flex flex-col gap-4 overflow-y-auto'}`}>
+            <div
+                className={`flex-1 ${isHorizontal ? 'flex flex-row items-center gap-2 overflow-x-auto' : 'flex flex-col gap-4 overflow-y-auto'}`}
+                style={{ scrollbarGutter: 'stable', paddingRight: isHorizontal ? 0 : '4px' }}
+            >
                 {children}
             </div>
 

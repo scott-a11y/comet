@@ -85,8 +85,7 @@ export class CollisionValidator {
     /**
      * Validate entire layout for collisions
      */
-    static async validateLayout(
-        layoutId: number,
+    static validateLayout(
         equipmentPositions: Array<{
             equipmentId: number;
             x: number;
@@ -94,7 +93,7 @@ export class CollisionValidator {
             orientation: number;
             equipment: { widthFt: number; depthFt: number; name: string };
         }>
-    ): Promise<CollisionValidationResult> {
+    ): CollisionValidationResult {
         const collisions: CollisionPair[] = [];
 
         // Check all pairs for collisions (O(n²) but acceptable for <100 items)

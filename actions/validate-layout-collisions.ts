@@ -35,8 +35,7 @@ export const validateLayoutCollisions = createServerAction()
             });
 
             // Validate collisions
-            const result = await CollisionValidator.validateLayout(
-                layoutId,
+            const result = CollisionValidator.validateLayout(
                 positionsWithEquipment
             );
 

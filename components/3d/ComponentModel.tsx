@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, memo } from "react";
 import { useGLTF, Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Component } from "@/lib/types/building-geometry";
@@ -42,7 +42,7 @@ function GltfModel({ url, width, height, depth }: { url: string; width: number; 
     }
 }
 
-export function ComponentModel({ item, scaleFtPerUnit }: ComponentModelProps) {
+export const ComponentModel = memo(function ComponentModel({ item, scaleFtPerUnit }: ComponentModelProps) {
     const { x, y, width, depth, height = 5, rotation, color, name, category, metadata } = item;
     const [hovered, setHovered] = useState(false);
 
@@ -92,4 +92,4 @@ export function ComponentModel({ item, scaleFtPerUnit }: ComponentModelProps) {
             )}
         </group>
     );
-}
+});

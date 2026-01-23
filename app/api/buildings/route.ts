@@ -9,17 +9,26 @@ import { apiSuccess, apiError } from '@/lib/api-response'
 async function getBuildingsHandler(userId: string) {
   try {
     const buildings = await prisma.shopBuilding.findMany({
-      include: {
-        zones: true,
-        equipment: {
-          include: {
-            powerSpecs: true,
-            dustSpecs: true,
-            airSpecs: true
+      where: {
+        userId
+      },
+      select: {
+        id: true,
+        name: true,
+        widthFt: true,
+        depthFt: true,
+        ceilingHeightFt: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            zones: true,
+            equipment: true,
+            utilityPoints: true,
+            layouts: true,
+            designerLayouts: true
           }
-        },
-        utilityPoints: true,
-        layouts: true
+        }
       },
       orderBy: {
         createdAt: 'desc'
@@ -33,14 +42,11 @@ async function getBuildingsHandler(userId: string) {
   }
 }
 
-// TODO: Re-enable auth after fixing Clerk configuration
-// For now, allow unauthenticated access to unblock development
-export const GET = withRateLimit(async (request: Request) => {
-  const userId = 'dev-user'; // Temporary placeholder
+export const GET = withRateLimit(withAuth(async (userId: string, request: Request) => {
   return getBuildingsHandler(userId);
-})
+}))
 
-export const POST = withRateLimit(async (request: Request) => {
+export const POST = withRateLimit(withAuth(async (userId: string, request: Request) => {
   try {
     const body = await request.json()
 
@@ -50,6 +56,7 @@ export const POST = withRateLimit(async (request: Request) => {
     // Create building with only fields that exist in database
     const building = await prisma.shopBuilding.create({
       data: {
+        userId,
         name: validated.name,
         widthFt: validated.widthFt ?? null,
         depthFt: validated.depthFt ?? null,
@@ -88,4 +95,4 @@ export const POST = withRateLimit(async (request: Request) => {
     console.error('Unexpected error:', error)
     return apiError('Failed to create building', 500)
   }
-})
+}))

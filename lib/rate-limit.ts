@@ -4,8 +4,24 @@ import { Redis } from '@upstash/redis'
 // Simple in-memory rate limiter for development
 // Can be upgraded to Redis-based limiter for production
 const inMemoryStore = new Map<string, { count: number; resetTime: number }>()
+let lastCleanup = Date.now()
+const CLEANUP_INTERVAL = 60000 // Clean up expired entries every 60 seconds
+
+// Cleanup function to prevent memory leak
+function cleanupExpiredEntries() {
+  const now = Date.now()
+  if (now - lastCleanup < CLEANUP_INTERVAL) return
+  lastCleanup = now
+  for (const [key, record] of inMemoryStore) {
+    if (now > record.resetTime) {
+      inMemoryStore.delete(key)
+    }
+  }
+}
 
 export async function simpleRateLimit(identifier: string, limit = 10, windowMs = 10000) {
+  // Clean up expired entries periodically
+  cleanupExpiredEntries()
   // Use Upstash if configured
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {

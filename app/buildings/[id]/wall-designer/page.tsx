@@ -3,7 +3,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ImprovedWallEditor } from './_components/improved-wall-editor';
+import dynamic from 'next/dynamic';
+
+// Dynamically import heavy editor components
+const ImprovedWallEditor = dynamic(
+    () => import('./_components/improved-wall-editor').then((mod) => mod.ImprovedWallEditor),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex-1 flex items-center justify-center bg-slate-900/50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+                    <p className="text-slate-400">Loading editor...</p>
+                </div>
+            </div>
+        )
+    }
+);
+
 import { WallDesignerTutorial } from './_components/wall-designer-tutorial';
 import { TemplateBrowser } from './_components/template-browser';
 import { exportToDXF, exportToSVG, downloadFile, calculateStats } from '@/lib/wall-designer/export-utils';
@@ -31,7 +48,7 @@ export default function WallDesignerPage() {
     useEffect(() => {
         const fetchBuilding = async () => {
             try {
-                const response = await fetch(`/api/buildings/${buildingId}`);
+                const response = await fetch(`/api/buildings/${buildingId}?minimal=true`);
                 if (!response.ok) throw new Error('Failed to load building');
 
                 const data = await response.json();
